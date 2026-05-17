@@ -1,0 +1,154 @@
+issue_id,run_date,store_id,sku_id,issue_type,issue_description,severity,resolved_flag
+DQ000001,2026-05-15,STR058,SKU001102,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000002,2026-05-15,STR053,SKU000515,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Blocker,0
+DQ000003,2026-05-15,STR005,SKU001175,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Blocker,0
+DQ000004,2026-05-15,STR048,SKU000404,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000005,2026-05-15,STR055,SKU000261,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Blocker,0
+DQ000006,2026-05-15,STR039,SKU000687,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000007,2026-05-15,STR055,SKU000648,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Blocker,0
+DQ000008,2026-05-15,STR063,SKU000307,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000009,2026-05-15,STR024,SKU001178,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000010,2026-05-15,STR026,SKU000382,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000011,2026-05-15,STR020,SKU000370,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Warning,0
+DQ000012,2026-05-15,STR017,SKU000226,NEGATIVE_STOCK,Stock on hand is negative after adjustment import,Warning,0
+DQ000013,2026-05-15,STR025,SKU000908,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000014,2026-05-15,STR005,SKU000697,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000015,2026-05-15,STR068,SKU000374,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Blocker,0
+DQ000016,2026-05-15,STR039,SKU000990,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000017,2026-05-15,STR042,SKU000142,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000018,2026-05-15,STR045,SKU000999,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Blocker,0
+DQ000019,2026-05-15,STR048,SKU000061,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000020,2026-05-15,STR029,SKU000850,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Warning,0
+DQ000021,2026-05-15,STR037,SKU000774,NEGATIVE_STOCK,Stock on hand is negative after adjustment import,Warning,0
+DQ000022,2026-05-15,STR065,SKU001131,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Blocker,0
+DQ000023,2026-05-15,STR030,SKU000239,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000024,2026-05-15,STR021,SKU000408,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Blocker,0
+DQ000025,2026-05-15,STR043,SKU000780,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000026,2026-05-15,STR024,SKU000274,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000027,2026-05-15,STR034,SKU000676,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Warning,0
+DQ000028,2026-05-15,STR070,SKU000904,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000029,2026-05-15,STR020,SKU000547,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000030,2026-05-15,STR063,SKU000667,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Blocker,0
+DQ000031,2026-05-15,STR021,SKU000775,SKU_NOT_REPLENISHABLE,SKU lifecycle status blocks replenishment,Warning,0
+DQ000032,2026-05-15,STR052,SKU000231,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000033,2026-05-15,STR025,SKU000706,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000034,2026-05-15,STR014,SKU000985,NEGATIVE_STOCK,Stock on hand is negative after adjustment import,Blocker,0
+DQ000035,2026-05-15,STR013,SKU000808,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Blocker,0
+DQ000036,2026-05-15,STR014,SKU000556,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Blocker,0
+DQ000037,2026-05-15,STR058,SKU001044,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000038,2026-05-15,STR004,SKU000637,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Blocker,0
+DQ000039,2026-05-15,STR002,SKU000112,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Warning,0
+DQ000040,2026-05-15,STR050,SKU001184,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000041,2026-05-15,STR051,SKU000598,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Blocker,0
+DQ000042,2026-05-15,STR006,SKU000105,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Blocker,0
+DQ000043,2026-05-15,STR037,SKU000744,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Blocker,0
+DQ000044,2026-05-15,STR062,SKU000929,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Warning,0
+DQ000045,2026-05-15,STR037,SKU000501,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Warning,0
+DQ000046,2026-05-15,STR018,SKU000194,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Blocker,0
+DQ000047,2026-05-15,STR061,SKU000201,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000048,2026-05-15,STR001,SKU001079,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Warning,0
+DQ000049,2026-05-15,STR009,SKU000104,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000050,2026-05-15,STR060,SKU001005,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Blocker,0
+DQ000051,2026-05-15,STR067,SKU000446,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Blocker,0
+DQ000052,2026-05-15,STR008,SKU000289,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000053,2026-05-15,STR023,SKU000128,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Warning,0
+DQ000054,2026-05-15,STR039,SKU000732,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Blocker,0
+DQ000055,2026-05-15,STR066,SKU000941,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Blocker,0
+DQ000056,2026-05-15,STR049,SKU000833,NEGATIVE_STOCK,Stock on hand is negative after adjustment import,Warning,0
+DQ000057,2026-05-15,STR046,SKU000501,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000058,2026-05-15,STR023,SKU000244,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000059,2026-05-15,STR059,SKU000935,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000060,2026-05-15,STR021,SKU000656,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000061,2026-05-15,STR069,SKU000249,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000062,2026-05-15,STR028,SKU000114,SKU_NOT_REPLENISHABLE,SKU lifecycle status blocks replenishment,Blocker,0
+DQ000063,2026-05-15,STR067,SKU000255,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000064,2026-05-15,STR017,SKU000238,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Blocker,0
+DQ000065,2026-05-15,STR029,SKU000151,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000066,2026-05-15,STR026,SKU000491,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000067,2026-05-15,STR027,SKU000122,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000068,2026-05-15,STR009,SKU001050,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000069,2026-05-15,STR028,SKU000902,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Blocker,0
+DQ000070,2026-05-15,STR016,SKU000280,NEGATIVE_STOCK,Stock on hand is negative after adjustment import,Warning,0
+DQ000071,2026-05-15,STR034,SKU000485,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Blocker,0
+DQ000072,2026-05-15,STR063,SKU000524,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Warning,0
+DQ000073,2026-05-15,STR042,SKU000946,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000074,2026-05-15,STR008,SKU000694,NEGATIVE_STOCK,Stock on hand is negative after adjustment import,Warning,0
+DQ000075,2026-05-15,STR057,SKU000748,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000076,2026-05-15,STR035,SKU000519,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Warning,0
+DQ000077,2026-05-15,STR018,SKU000955,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000078,2026-05-15,STR016,SKU000479,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Blocker,0
+DQ000079,2026-05-15,STR059,SKU000746,SKU_NOT_REPLENISHABLE,SKU lifecycle status blocks replenishment,Warning,0
+DQ000080,2026-05-15,STR069,SKU000709,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000081,2026-05-15,STR054,SKU000349,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000082,2026-05-15,STR052,SKU000979,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000083,2026-05-15,STR018,SKU000924,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000084,2026-05-15,STR069,SKU000928,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Warning,0
+DQ000085,2026-05-15,STR058,SKU001007,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000086,2026-05-15,STR059,SKU000779,SKU_NOT_REPLENISHABLE,SKU lifecycle status blocks replenishment,Warning,0
+DQ000087,2026-05-15,STR032,SKU000554,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000088,2026-05-15,STR005,SKU000077,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000089,2026-05-15,STR048,SKU001164,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000090,2026-05-15,STR002,SKU000424,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Warning,0
+DQ000091,2026-05-15,STR014,SKU000942,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Blocker,0
+DQ000092,2026-05-15,STR065,SKU000818,NEGATIVE_STOCK,Stock on hand is negative after adjustment import,Blocker,0
+DQ000093,2026-05-15,STR050,SKU001137,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000094,2026-05-15,STR038,SKU000507,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Blocker,0
+DQ000095,2026-05-15,STR046,SKU000071,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Blocker,0
+DQ000096,2026-05-15,STR068,SKU000645,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Warning,0
+DQ000097,2026-05-15,STR064,SKU001037,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000098,2026-05-15,STR040,SKU000001,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Warning,0
+DQ000099,2026-05-15,STR065,SKU000249,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000100,2026-05-15,STR058,SKU000891,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Warning,0
+DQ000101,2026-05-15,STR002,SKU000966,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Blocker,0
+DQ000102,2026-05-15,STR041,SKU000415,SKU_NOT_REPLENISHABLE,SKU lifecycle status blocks replenishment,Warning,0
+DQ000103,2026-05-15,STR002,SKU000322,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000104,2026-05-15,STR037,SKU000343,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000105,2026-05-15,STR014,SKU000462,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000106,2026-05-15,STR066,SKU000535,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Blocker,0
+DQ000107,2026-05-15,STR036,SKU000663,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000108,2026-05-15,STR039,SKU000337,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Warning,0
+DQ000109,2026-05-15,STR070,SKU001039,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Blocker,0
+DQ000110,2026-05-15,STR048,SKU000378,NEGATIVE_STOCK,Stock on hand is negative after adjustment import,Warning,0
+DQ000111,2026-05-15,STR050,SKU000089,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Warning,0
+DQ000112,2026-05-15,STR064,SKU000596,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Blocker,0
+DQ000113,2026-05-15,STR040,SKU000625,NEGATIVE_STOCK,Stock on hand is negative after adjustment import,Warning,0
+DQ000114,2026-05-15,STR038,SKU000839,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000115,2026-05-15,STR058,SKU000190,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Blocker,0
+DQ000116,2026-05-15,STR022,SKU000382,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Blocker,0
+DQ000117,2026-05-15,STR039,SKU000102,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000118,2026-05-15,STR013,SKU000215,NEGATIVE_STOCK,Stock on hand is negative after adjustment import,Warning,0
+DQ000119,2026-05-15,STR049,SKU000673,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Blocker,0
+DQ000120,2026-05-15,STR045,SKU000889,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000121,2026-05-15,STR052,SKU000707,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000122,2026-05-15,STR040,SKU001168,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000123,2026-05-15,STR067,SKU000347,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000124,2026-05-15,STR010,SKU000508,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Blocker,0
+DQ000125,2026-05-15,STR009,SKU000476,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000126,2026-05-15,STR016,SKU000741,SKU_NOT_REPLENISHABLE,SKU lifecycle status blocks replenishment,Warning,0
+DQ000127,2026-05-15,STR031,SKU000269,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Blocker,0
+DQ000128,2026-05-15,STR068,SKU000589,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Blocker,0
+DQ000129,2026-05-15,STR036,SKU000887,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000130,2026-05-15,STR051,SKU000673,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000131,2026-05-15,STR068,SKU000045,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000132,2026-05-15,STR063,SKU000408,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Blocker,0
+DQ000133,2026-05-15,STR041,SKU000886,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000134,2026-05-15,STR015,SKU001087,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Warning,0
+DQ000135,2026-05-15,STR031,SKU000254,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000136,2026-05-15,STR002,SKU000001,NEGATIVE_STOCK,Stock on hand is negative after adjustment import,Warning,0
+DQ000137,2026-05-15,STR057,SKU000853,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Blocker,0
+DQ000138,2026-05-15,STR036,SKU000510,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Blocker,0
+DQ000139,2026-05-15,STR056,SKU000771,SKU_NOT_REPLENISHABLE,SKU lifecycle status blocks replenishment,Blocker,0
+DQ000140,2026-05-15,STR044,SKU000989,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Blocker,0
+DQ000141,2026-05-15,STR057,SKU001169,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000142,2026-05-15,STR020,SKU001123,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000143,2026-05-15,STR043,SKU000963,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Warning,0
+DQ000144,2026-05-15,STR045,SKU000805,NEGATIVE_STOCK,Stock on hand is negative after adjustment import,Warning,0
+DQ000145,2026-05-15,STR010,SKU001127,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000146,2026-05-15,STR006,SKU000465,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Warning,0
+DQ000147,2026-05-15,STR048,SKU000054,MISSING_FORECAST,Forecast is missing for ranged store-SKU,Warning,0
+DQ000148,2026-05-15,STR028,SKU000879,NEGATIVE_STOCK,Stock on hand is negative after adjustment import,Blocker,0
+DQ000149,2026-05-15,STR022,SKU000883,NEGATIVE_STOCK,Stock on hand is negative after adjustment import,Blocker,0
+DQ000150,2026-05-15,STR045,SKU000427,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Blocker,0
+DQ000151,2026-05-15,STR010,SKU000553,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Blocker,0
+DQ000152,2026-05-15,STR034,SKU000008,LOW_CONFIDENCE_FORECAST,Forecast confidence below threshold,Warning,0
+DQ000153,2026-05-15,STR017,SKU000388,PACK_MULTIPLE_MISSING,Pack multiple is missing or zero,Blocker,0

@@ -1,0 +1,2 @@
+run_date,business_day_number,last_approved_scenario,source_package,notes
+2026-05-15,1,,initial_mock_package,"After approval, create a new dated package by subtracting approved shipment quantities from DC free stock, adding shipped quantities to store in_transit/open_orders, simulating sales for the next day, refreshing forecast, and advancing run_date by one day."

@@ -1,0 +1,2 @@
+approval_id,approval_datetime,scenario_name,approved_by,store_id,sku_id,approved_qty,system_recommended_qty,manual_override_flag,comment
+,,,,,,,,,

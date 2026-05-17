@@ -1,0 +1,16 @@
+file_name,primary_key,description
+stores.csv,store_id,"70 owned stores, route, weekly delivery day, receiving capacity, and category capacity."
+sku_master.csv,sku_id,"1,200 style-color-size SKUs with category, lifecycle, price, cost, margin, pack multiple, and presentation minimum."
+dc_inventory.csv,sku_id,"Single-DC inventory position. Use dc_free_stock as the approval constraint, not dc_total_stock."
+assortment.csv,store_id + sku_id,"Fixed store-SKU ranging table with target cover, min/max cover, service target, and capacity by store-SKU."
+store_inventory.csv,run_date + store_id + sku_id,Current store stock on hand and in-transit stock for ranged SKUs.
+sales_history_28d.csv,date + store_id + sku_id,Sparse non-zero sales history for the past 28 days. Missing row means zero sales.
+forecast_next_28d.csv,store_id + sku_id,"Forward forecast by store-SKU with base daily demand, 7/14/28-day demand, confidence, bias, seasonality, and promo uplift."
+promo_calendar.csv,promo_id,Known future promotions and expected uplift by SKU.
+open_orders.csv,order_id,Existing in-transit store replenishment orders.
+capacity_rules.csv,store_id + category,"Recommended prototype capacity model: warn above soft category capacity, block above hard category capacity, also respect receiving capacity per delivery."
+optimization_parameters.csv,scenario,Suggested weighting logic for the three smart replenishment scenarios.
+data_quality_issues.csv,issue_id,Mock row-level data quality warnings/blockers for exception review.
+approval_history.csv,approval_id,Empty workflow file to append approved rows after each scenario approval.
+manual_overrides.csv,run_date + store_id + sku_id,Empty workflow file to append manual overrides and comments.
+simulation_state.csv,run_date,Tracks simulation day/package state for repeated prototype runs.

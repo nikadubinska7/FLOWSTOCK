@@ -1,0 +1,4 @@
+scenario,service_level_weight,gross_margin_weight,revenue_weight,inventory_penalty_weight,logistics_penalty_weight,target_cover_multiplier,scarce_stock_rule
+Inventory optimization,0.3,0.25,0.15,0.25,0.05,0.8,prioritize_margin_recovery_per_unit_after_capacity_and_pack_rounding
+Lost sales recovery,0.35,0.3,0.25,0.05,0.05,1.15,prioritize_revenue_and_margin_at_risk_with_stockout_rows_first
+Optimal recommendation,0.3,0.35,0.15,0.15,0.05,1.0,maximize_margin_recovery_subject_to_service_level_capacity_pack_and_dc_free_stock
