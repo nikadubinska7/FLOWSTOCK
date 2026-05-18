@@ -4,12 +4,11 @@ import { scenarioForKey, scenarios } from "@/lib/domain/scenarioWeights";
 import { recalculateRows, calculateKpis } from "@/lib/domain/kpiCalculations";
 import { riskForRow } from "@/lib/domain/riskScoring";
 import { round } from "@/lib/utils/numbers";
+import { baselineRequiredQty } from "@/lib/domain/baseline";
 
-function roundedNeed(rawNeed: number, packMultiple: number, capacityRoom: number, scenario: ScenarioKey): number {
+function roundedNeed(rawNeed: number, packMultiple: number): number {
   if (rawNeed <= 0) return 0;
-  const rounded = Math.ceil(rawNeed / packMultiple) * packMultiple;
-  if (scenario === "inventory" && rawNeed < packMultiple * 0.45) return 0;
-  return Math.max(0, Math.min(rounded, Math.floor(capacityRoom / packMultiple) * packMultiple));
+  return Math.ceil(rawNeed / packMultiple) * packMultiple;
 }
 
 function targetCoverDaysForScenario(row: WorkingRow, scenario: ScenarioKey): number {
@@ -18,21 +17,7 @@ function targetCoverDaysForScenario(row: WorkingRow, scenario: ScenarioKey): num
   return row.minCoverDays;
 }
 
-function priorityScore(row: WorkingRow, scenario: ScenarioKey): number {
-  const config = scenarioForKey(scenario);
-  const promoFactor = 1 + row.promoUpliftPct;
-  const riskBoost = row.daysOfCover <= row.daysToDelivery ? 1.35 : 1;
-  const inventoryPenalty = Math.max(0, row.daysOfCover - 14) * config.inventoryPenaltyWeight;
-  return (
-    row.marginAtRisk * config.grossMarginWeight * row.forecastConfidence * row.storeSkuPriority * promoFactor +
-    row.revenueAtRisk * config.revenueWeight * riskBoost +
-    row.serviceLevelTarget * 100 * config.serviceLevelWeight -
-    inventoryPenalty -
-    row.packMultiple * config.logisticsPenaltyWeight
-  );
-}
-
-const riskRank: Record<WorkingRow["riskLevel"], number> = { Blocked: 3, High: 2, Medium: 1, Low: 0 };
+const riskRank: Record<WorkingRow["riskLevel"], number> = { High: 3, Medium: 2, Low: 1 };
 
 function currentRisk(row: WorkingRow): WorkingRow["riskLevel"] {
   return riskForRow(row);
@@ -49,7 +34,8 @@ function allocationPriority(a: WorkingRow, b: WorkingRow, scenario: ScenarioKey)
   const impactDelta = impactScore(b) - impactScore(a);
   if (impactDelta !== 0) return impactDelta;
 
-  return priorityScore(b, scenario) - priorityScore(a, scenario);
+  if (b.revenueAtRisk !== a.revenueAtRisk) return b.revenueAtRisk - a.revenueAtRisk;
+  return a.id.localeCompare(b.id);
 }
 
 function hasClearZeroReason(row: WorkingRow): boolean {
@@ -59,10 +45,7 @@ function hasClearZeroReason(row: WorkingRow): boolean {
     "no replenishment:",
     "no replenishment needed",
     "dc shortage allocation",
-    "sku not replenishable",
-    "not ranged",
-    "data issue",
-    "capacity capped"
+    "data issue"
   ].some((text) => reason.includes(text));
 }
 
@@ -76,62 +59,19 @@ function leanDemandUntilNextDelivery(row: WorkingRow): number {
   return daily * Math.max(row.daysToDelivery, row.minCoverDays);
 }
 
-function applyLeanOverstockGuard(row: WorkingRow, recommended: number, demandUntilNextDelivery: number): number {
-  if (recommended <= 0) return 0;
-  const daily = adjustedDailyForecast(row);
-  if (daily <= 0) return recommended;
-
-  const availableStoreStock = row.stockOnHand + row.inTransitQty;
-  let validQty = recommended;
-  while (validQty > 0) {
-    const projectedStockAfterDemand = Math.max(0, availableStoreStock + validQty - demandUntilNextDelivery);
-    const projectedCover = projectedStockAfterDemand / daily;
-    if (projectedCover <= row.maxCoverDays) return validQty;
-    validQty -= row.packMultiple;
-  }
-
-  return 0;
-}
-
 function leanRecommendedQty(row: WorkingRow, reasons: Set<string>): number {
   const availableStoreStock = row.stockOnHand + row.inTransitQty;
-  const daily = adjustedDailyForecast(row);
-  const lifecycle = row.lifecycleStatus.toLowerCase();
-  const rowRisk = currentRisk(row);
 
-  if (!row.ranged) {
-    addReason(reasons, "Blocked: not ranged");
-    return 0;
-  }
-  if (!row.replenishable) {
-    addReason(reasons, "Blocked: not replenishable");
-    return 0;
-  }
   if (row.dataIssueSeverity.toLowerCase() === "blocker") {
     addReason(reasons, "Blocked: blocker data issue");
     return 0;
   }
-  if (lifecycle === "exit") {
-    addReason(reasons, "Blocked: lifecycle exit");
-    return 0;
-  }
-  if (lifecycle === "markdown" && !(row.replenishable && (rowRisk === "High" || row.stockOnHand === 0) && row.forecastNext7 > 0)) {
-    addReason(reasons, "No replenishment: markdown lifecycle");
-    return 0;
-  }
 
-  const meaningfulDemand = row.forecastNext14 >= Math.max(1, row.packMultiple * 0.5);
-  if (daily < 0.15 && rowRisk !== "High" && !(row.stockOnHand === 0 && meaningfulDemand)) {
+  const demandUntilNextDelivery = leanDemandUntilNextDelivery(row);
+  if (demandUntilNextDelivery <= 0) {
     addReason(reasons, "No replenishment: no forecast demand");
     return 0;
   }
-
-  if (row.forecastConfidence < 0.65 && rowRisk !== "High" && !(row.stockOnHand === 0 && row.forecastNext7 >= row.packMultiple)) {
-    addReason(reasons, "No replenishment: low forecast confidence");
-    return 0;
-  }
-
-  const demandUntilNextDelivery = leanDemandUntilNextDelivery(row);
   const minimumRequiredStock = demandUntilNextDelivery + row.minPresentationQty;
   const rawNeed = minimumRequiredStock - availableStoreStock;
   const projectedStockout = availableStoreStock < demandUntilNextDelivery;
@@ -144,19 +84,8 @@ function leanRecommendedQty(row: WorkingRow, reasons: Set<string>): number {
     return 0;
   }
 
-  const capacityRoom = Math.max(0, Math.min(row.storeSkuCapacityUnits - availableStoreStock, row.receivingCapacityUnits));
-  if (capacityRoom < row.packMultiple) {
-    addReason(reasons, "Blocked: hard capacity");
-    return 0;
-  }
-  let recommended = Math.ceil(rawNeed / row.packMultiple) * row.packMultiple;
-  recommended = Math.min(recommended, Math.floor(capacityRoom / row.packMultiple) * row.packMultiple);
-  recommended = applyLeanOverstockGuard(row, recommended, demandUntilNextDelivery);
-  if (recommended === 0) addReason(reasons, "No replenishment: pack multiple would create excess");
+  const recommended = Math.ceil(rawNeed / row.packMultiple) * row.packMultiple;
 
-  if (recommended > 0 && recommended !== Math.ceil(rawNeed / row.packMultiple) * row.packMultiple) {
-    addReason(reasons, "Capacity capped");
-  }
   if (recommended > 0 && row.promoFlag) addReason(reasons, "Promo uplift");
   if (recommended > 0 && row.stockOnHand === 0) addReason(reasons, "Projected stockout");
   return recommended;
@@ -183,10 +112,6 @@ export function recommendRows(baseRows: WorkingRow[], scenario: ScenarioKey): Wo
     addReason(reasons, "Projected stockout", row.stockOnHand + row.inTransitQty < row.forecastNext7);
     addReason(reasons, "Promo uplift", row.promoFlag);
     addReason(reasons, "Demand spike", row.forecastNext14 > row.forecastNext7 * 2.2);
-    addReason(reasons, "Forecast under-call correction", row.forecastConfidence < 0.65);
-    addReason(reasons, "Store priority", row.storeSkuPriority >= 0.9);
-    addReason(reasons, "Blocked: not replenishable", !row.replenishable);
-    addReason(reasons, "Blocked: not ranged", !row.ranged);
     addReason(reasons, row.dataIssueSeverity.toLowerCase() === "blocker" ? "Blocked: blocker data issue" : "Data issue", row.dataIssue);
 
     const currentStock = row.stockOnHand + row.inTransitQty;
@@ -198,34 +123,29 @@ export function recommendRows(baseRows: WorkingRow[], scenario: ScenarioKey): Wo
     const adjustedDemand = scenario === "lostSales"
       ? Math.max(row.forecastNext14, daily * targetCoverDays, minimumRequiredStock)
       : Math.max(daily * targetCoverDays, minimumRequiredStock);
-    const targetStock = Math.min(
-      row.storeSkuCapacityUnits,
-      adjustedDemand * config.targetCoverMultiplier + row.minPresentationQty
-    );
-    const capacityRoom = Math.max(0, row.storeSkuCapacityUnits - currentStock);
-    const rawNeed = shouldCalculateNeed ? Math.max(0, targetStock - currentStock) : 0;
+    const unconstrainedTargetStock = adjustedDemand * config.targetCoverMultiplier + row.minPresentationQty;
+    const rawNeedBeforeConstraints = shouldCalculateNeed ? Math.max(0, unconstrainedTargetStock - currentStock) : 0;
+    const requiredQty = row.baselineRequiredQty || row.requiredQty || baselineRequiredQty(row);
     let recommended = scenario === "inventory"
       ? leanRecommendedQty(row, reasons)
-      : row.ranged && row.replenishable && row.dataIssueSeverity.toLowerCase() !== "blocker" && row.lifecycleStatus.toLowerCase() !== "exit"
-        ? roundedNeed(rawNeed, row.packMultiple, capacityRoom, scenario)
+      : row.dataIssueSeverity.toLowerCase() !== "blocker"
+        ? roundedNeed(rawNeedBeforeConstraints, row.packMultiple)
         : 0;
 
     if (recommended === 0 && scenario !== "inventory") {
-      if (!row.ranged) addReason(reasons, "Blocked: not ranged");
-      else if (!row.replenishable) addReason(reasons, "Blocked: not replenishable");
-      else if (row.dataIssueSeverity.toLowerCase() === "blocker") addReason(reasons, "Blocked: blocker data issue");
-      else if (row.lifecycleStatus.toLowerCase() === "exit") addReason(reasons, "Blocked: lifecycle exit");
+      if (row.dataIssueSeverity.toLowerCase() === "blocker") addReason(reasons, "Blocked: blocker data issue");
       else if (row.forecastNext7 <= 0 && row.forecastNext14 <= 0 && daily <= 0) addReason(reasons, "No replenishment: no forecast demand");
-      else if (!shouldCalculateNeed || rawNeed <= 0) addReason(reasons, "No replenishment needed");
-      else if (capacityRoom < row.packMultiple) addReason(reasons, "Blocked: hard capacity");
-      else addReason(reasons, rowRisk === "High" ? "Review: high risk with zero recommendation" : "No replenishment: pack multiple would create excess");
+      else if (!shouldCalculateNeed || rawNeedBeforeConstraints <= 0) addReason(reasons, "No replenishment needed");
+      else addReason(reasons, rowRisk === "High" ? "Review: high risk with zero recommendation" : "No replenishment: no valid demand need");
     }
 
-    addReason(reasons, "Pack multiple rounding", recommended > 0 && recommended !== Math.ceil(rawNeed));
-    addReason(reasons, "Capacity capped", recommended > 0 && recommended < Math.ceil(rawNeed / row.packMultiple) * row.packMultiple);
+    addReason(reasons, "Pack multiple rounding", recommended > 0 && recommended !== Math.ceil(rawNeedBeforeConstraints));
 
     return {
       ...row,
+      baselineRequiredQty: requiredQty,
+      baselineRevenueAtRisk: row.baselineRevenueAtRisk || row.revenueAtRisk,
+      requiredQty,
       systemRecommendedQty: recommended,
       finalQty: recommended,
       comment: "",
@@ -251,7 +171,7 @@ export function recommendRows(baseRows: WorkingRow[], scenario: ScenarioKey): Wo
       let qty = row.systemRecommendedQty;
       if (qty > 0 && remaining <= 0) {
         const reasons = new Set(row.reasonCode.split("; ").filter(Boolean));
-        addReason(reasons, "Blocked: no DC free stock");
+        addReason(reasons, "No replenishment: no DC free stock");
         row = { ...row, reasonCode: reasonText(reasons) };
         qty = 0;
       }
@@ -259,7 +179,7 @@ export function recommendRows(baseRows: WorkingRow[], scenario: ScenarioKey): Wo
         const capped = Math.floor(remaining / row.packMultiple) * row.packMultiple;
         qty = Math.max(0, capped);
         const reasons = new Set(row.reasonCode.split("; ").filter(Boolean));
-        addReason(reasons, qty > 0 ? "DC shortage allocation" : "Blocked: no DC free stock");
+        addReason(reasons, qty > 0 ? "DC shortage allocation" : remaining > 0 ? "No replenishment: DC free stock below Pack / MOQ" : "No replenishment: no DC free stock");
         row = { ...row, reasonCode: reasonText(reasons) };
       }
       remaining -= qty;

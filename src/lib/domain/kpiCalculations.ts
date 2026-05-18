@@ -1,6 +1,6 @@
 import type { Kpis, WorkingRow } from "@/lib/domain/types";
 import { round, safeDivide } from "@/lib/utils/numbers";
-import { validateRows } from "@/lib/domain/constraints";
+import { isApprovalBlocked, validateRows } from "@/lib/domain/constraints";
 
 export function updateRowProjection(row: WorkingRow): WorkingRow {
   const projectedStock = row.stockOnHand + row.inTransitQty + row.finalQty;
@@ -12,7 +12,7 @@ export function updateRowProjection(row: WorkingRow): WorkingRow {
   return {
     ...row,
     projectedDaysOfCover: round(Math.min(projectedDays, 999), 1),
-    revenueAtRisk: round(currentLostUnits * row.sellingPrice, 2),
+    revenueAtRisk: row.baselineRevenueAtRisk,
     marginAtRisk: round(currentLostUnits * row.sellingPrice * row.grossMarginPct, 2),
     expectedRecoveredRevenue: round(recoveredUnits * row.sellingPrice, 2),
     expectedRecoveredMargin: round(recoveredUnits * row.sellingPrice * row.grossMarginPct, 2),
@@ -62,7 +62,7 @@ export function calculateKpis(rows: WorkingRow[], useFinalQty: boolean): Kpis {
     recoveredRevenue += Math.max(0, currentLostUnits - projectedLostUnits) * row.sellingPrice;
     recoveredMargin += Math.max(0, currentLostUnits - projectedLostUnits) * row.sellingPrice * row.grossMarginPct;
     if (finalQty > 0 && projectedLostUnits < currentLostUnits) improvedRows += 1;
-    if (row.constraintStatus === "Blocked") constraintViolations += 1;
+    if (isApprovalBlocked(row)) constraintViolations += 1;
     replenishmentUnits += finalQty;
     dcBySku.set(row.skuId, useFinalQty ? row.dcFreeStock : (row.dcFreeStockOriginal ?? row.dcFreeStock));
   }

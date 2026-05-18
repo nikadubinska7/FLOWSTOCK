@@ -1,6 +1,6 @@
-import { AlertTriangle, History, LayoutDashboard, PanelsTopLeft } from "lucide-react";
+import { AlertTriangle, FileDown, History, LayoutDashboard, PanelsTopLeft } from "lucide-react";
 
-export function Sidebar({ activeView, onChange }: { activeView: string; onChange: (view: string) => void }) {
+export function Sidebar({ activeView, onChange, onExport }: { activeView: string; onChange: (view: string) => void; onExport: () => void }) {
   const items = [
     { id: "workspace", label: "Workspace", icon: <LayoutDashboard size={18} /> },
     { id: "issues", label: "Data Issues", icon: <AlertTriangle size={18} /> },
@@ -23,6 +23,14 @@ export function Sidebar({ activeView, onChange }: { activeView: string; onChange
             {item.label}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={onExport}
+          className="flex min-h-12 shrink-0 items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-cockpit-muted transition hover:bg-cyan-400/10 hover:text-cyan-100 lg:mt-2"
+        >
+          <FileDown size={18} />
+          Export
+        </button>
       </div>
     </nav>
   );

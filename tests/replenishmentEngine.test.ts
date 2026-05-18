@@ -26,7 +26,7 @@ describe("replenishment engine", () => {
 
     expect(high?.finalQty).toBe(6);
     expect(low?.finalQty).toBe(0);
-    expect(low?.reasonCode).toContain("Blocked: no DC free stock");
+    expect(low?.reasonCode).toContain("No replenishment: no DC free stock");
   });
 
   it("allocates scarce DC stock to high-risk rows before lower-risk high-impact rows", () => {
@@ -65,7 +65,7 @@ describe("replenishment engine", () => {
     expect(highRisk?.riskLevel).toBe("High");
     expect(highRisk?.finalQty).toBeGreaterThan(0);
     expect(mediumImpact?.finalQty).toBe(0);
-    expect(mediumImpact?.reasonCode).toContain("Blocked: no DC free stock");
+    expect(mediumImpact?.reasonCode).toContain("No replenishment: no DC free stock");
   });
 
   it("keeps lean replenishment conservative versus optimal and lost sales recovery", () => {
@@ -83,7 +83,22 @@ describe("replenishment engine", () => {
     expect(optimal).toBeLessThanOrEqual(lostSales);
   });
 
-  it("does not lean-replenish exit lifecycle or low-confidence rows without urgent demand", () => {
+  it("keeps baseline required quantity stable across scenarios", () => {
+    const rows = [
+      makeRow({ id: "a", storeId: "STR001", stockOnHand: 0, forecastNext7: 14, forecastNext14: 28, baselineRequiredQty: 24, requiredQty: 24 }),
+      makeRow({ id: "b", storeId: "STR002", stockOnHand: 8, forecastNext7: 14, forecastNext14: 28, baselineRequiredQty: 18, requiredQty: 18 })
+    ];
+
+    const lean = recommendRows(rows, "inventory").reduce((sum, row) => sum + row.requiredQty, 0);
+    const optimal = recommendRows(rows, "optimal").reduce((sum, row) => sum + row.requiredQty, 0);
+    const lostSales = recommendRows(rows, "lostSales").reduce((sum, row) => sum + row.requiredQty, 0);
+
+    expect(lean).toBe(42);
+    expect(optimal).toBe(42);
+    expect(lostSales).toBe(42);
+  });
+
+  it("ignores lifecycle and only skips lean rows when demand does not require stock", () => {
     const rows = recommendRows(
       [
         makeRow({ id: "exit", lifecycleStatus: "Exit", stockOnHand: 0, forecastNext7: 20 }),
@@ -92,7 +107,7 @@ describe("replenishment engine", () => {
       "inventory"
     );
 
-    expect(rows.find((row) => row.id === "exit")?.finalQty).toBe(0);
+    expect(rows.find((row) => row.id === "exit")?.finalQty).toBeGreaterThan(0);
     expect(rows.find((row) => row.id === "low-confidence")?.finalQty).toBe(0);
   });
 });

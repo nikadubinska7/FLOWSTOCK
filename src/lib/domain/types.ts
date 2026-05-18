@@ -1,6 +1,6 @@
 export type ScenarioKey = "inventory" | "lostSales" | "optimal";
-export type RiskLevel = "Low" | "Medium" | "High" | "Blocked";
-export type ConstraintStatus = "Valid" | "Warning" | "Blocked";
+export type RiskLevel = "Low" | "Medium" | "High";
+export type ConstraintStatus = "Valid" | "Blocked";
 
 export type CsvRecord = Record<string, string>;
 
@@ -29,6 +29,9 @@ export type WorkingRow = {
   skuId: string;
   styleColorSize: string;
   productDescription: string;
+  baselineRequiredQty: number;
+  baselineRevenueAtRisk: number;
+  requiredQty: number;
   systemRecommendedQty: number;
   finalQty: number;
   stockOnHand: number;

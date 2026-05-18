@@ -1,4 +1,4 @@
-import { Columns3, Filter, Plus, Search } from "lucide-react";
+import { Filter, Search } from "lucide-react";
 import { SearchInput } from "@/components/common/SearchInput";
 import { Select } from "@/components/common/Select";
 
@@ -37,16 +37,15 @@ export function TableFilters({
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => set("risk", filters.risk === "High" ? "" : "High")} className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${filters.risk === "High" ? "border-rose-300/35 bg-rose-400/14 text-rose-100" : "border-white/10 bg-white/[0.04] text-cockpit-muted hover:bg-white/[0.07]"}`}>High risk</button>
-          <button type="button" onClick={() => set("dataIssue", filters.dataIssue === "yes" ? "" : "yes")} className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${filters.dataIssue === "yes" ? "border-amber-300/35 bg-amber-400/14 text-amber-100" : "border-white/10 bg-white/[0.04] text-cockpit-muted hover:bg-white/[0.07]"}`}>Data issues</button>
-          <button type="button" onClick={() => set("finalPositive", filters.finalPositive === "yes" ? "" : "yes")} className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${filters.finalPositive === "yes" ? "border-cyan-300/35 bg-cyan-400/14 text-cyan-100" : "border-white/10 bg-white/[0.04] text-cockpit-muted hover:bg-white/[0.07]"}`}>Final qty &gt; 0</button>
-          <button type="button" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-cockpit-muted transition hover:bg-white/[0.07]"><Plus size={14} /> Add filter</button>
-          <button type="button" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-cockpit-muted transition hover:bg-white/[0.07]"><Columns3 size={14} /> Columns</button>
+          <button type="button" onClick={() => set("risk", filters.risk === "Medium" ? "" : "Medium")} className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${filters.risk === "Medium" ? "border-amber-300/35 bg-amber-400/14 text-amber-100" : "border-white/10 bg-white/[0.04] text-cockpit-muted hover:bg-white/[0.07]"}`}>Medium risk</button>
+          <button type="button" onClick={() => set("risk", filters.risk === "Low" ? "" : "Low")} className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${filters.risk === "Low" ? "border-emerald-300/35 bg-emerald-400/14 text-emerald-100" : "border-white/10 bg-white/[0.04] text-cockpit-muted hover:bg-white/[0.07]"}`}>Low risk</button>
+          <button type="button" onClick={() => set("constraint", filters.constraint === "Blocked" ? "" : "Blocked")} className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${filters.constraint === "Blocked" ? "border-red-300/35 bg-red-400/14 text-red-100" : "border-white/10 bg-white/[0.04] text-cockpit-muted hover:bg-white/[0.07]"}`}>Blocked status</button>
         </div>
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-5">
         <div className="relative">
           <Search size={17} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-cockpit-muted" />
-          <SearchInput className="pl-11" placeholder="Search store, SKU, reason" value={filters.search} onChange={(event) => set("search", event.target.value)} />
+          <SearchInput className="pl-11" placeholder="Search store, SKU, product" value={filters.search} onChange={(event) => set("search", event.target.value)} />
         </div>
         <Select value={filters.store} onChange={(event) => set("store", event.target.value)}>
           <option value="">All stores</option>
@@ -61,33 +60,11 @@ export function TableFilters({
           <option>High</option>
           <option>Medium</option>
           <option>Low</option>
-          <option>Blocked</option>
         </Select>
         <Select value={filters.constraint} onChange={(event) => set("constraint", event.target.value)}>
-          <option value="">All constraint states</option>
+          <option value="">All statuses</option>
           <option>Valid</option>
-          <option>Warning</option>
           <option>Blocked</option>
-        </Select>
-        <Select value={filters.promo} onChange={(event) => set("promo", event.target.value)}>
-          <option value="">Promo and non-promo</option>
-          <option value="yes">Promo only</option>
-          <option value="no">Non-promo only</option>
-        </Select>
-        <Select value={filters.manual} onChange={(event) => set("manual", event.target.value)}>
-          <option value="">Manual and system rows</option>
-          <option value="yes">Manual override only</option>
-          <option value="no">No manual override</option>
-        </Select>
-        <Select value={filters.dataIssue} onChange={(event) => set("dataIssue", event.target.value)}>
-          <option value="">With or without data issue</option>
-          <option value="yes">Data issue only</option>
-          <option value="no">No data issue</option>
-        </Select>
-        <Select value={filters.finalPositive} onChange={(event) => set("finalPositive", event.target.value)}>
-          <option value="">All quantities</option>
-          <option value="yes">Final qty greater than zero</option>
-          <option value="no">Final qty zero</option>
         </Select>
       </div>
     </section>

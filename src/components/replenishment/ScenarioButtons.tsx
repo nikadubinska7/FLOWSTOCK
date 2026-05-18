@@ -42,7 +42,7 @@ export function ScenarioButtons({
       key: "optimal",
       label: "Optimal Recommendation",
       icon: <BarChart3 size={24} />,
-      text: "Balanced margin, service, and capacity",
+      text: "Balance margin, service level, and available DC stock",
       color: "border-blue-300/35 bg-blue-500/12 hover:bg-blue-500/18 hover:border-blue-300/60",
       iconColor: "bg-blue-500/18 text-blue-200 ring-blue-300/25",
       active: "border-blue-300/75 bg-blue-500/22 shadow-[0_18px_46px_rgba(37,99,235,0.28)]"
@@ -59,7 +59,7 @@ export function ScenarioButtons({
             </span>
             <h2 className="text-2xl font-semibold text-cockpit-text">Smart Replenishment</h2>
           </div>
-          <p className="max-w-3xl text-sm text-cockpit-muted">Choose the planning strategy. The system calculates quantities, reasons, constraints, and projected impact.</p>
+          <p className="max-w-3xl text-sm text-cockpit-muted">Choose the planning strategy. The system calculates quantities, explanations, and projected impact.</p>
         </div>
         <span className="shrink-0 rounded-full border border-blue-300/25 bg-blue-400/10 px-3 py-1 text-xs font-semibold text-blue-100">{activeScenario || "No scenario run"}</span>
       </div>

@@ -7,6 +7,7 @@ import { addDays, deliveryDate } from "@/lib/utils/dates";
 import { latestPackagePath, nextInputPath, outputRootForRun } from "@/lib/utils/filePaths";
 import { n, round } from "@/lib/utils/numbers";
 import { createShippingDocuments } from "@/lib/domain/shippingDocuments";
+import { isApprovalBlocked } from "@/lib/domain/constraints";
 
 function key(storeId: string, skuId: string): string {
   return `${storeId}|${skuId}`;
@@ -27,8 +28,8 @@ async function copyPackage(source: string, destination: string): Promise<void> {
 }
 
 export async function approveRows(runDate: string, scenario: string, rows: WorkingRow[], createDocs: boolean): Promise<ApprovalResponse> {
-  const validRows = rows.filter((row) => row.finalQty > 0 && row.constraintStatus !== "Blocked");
-  const blockedRowsExcluded = rows.filter((row) => row.finalQty > 0 && row.constraintStatus === "Blocked").length;
+  const validRows = rows.filter((row) => row.finalQty > 0 && !isApprovalBlocked(row));
+  const blockedRowsExcluded = rows.filter((row) => row.finalQty > 0 && isApprovalBlocked(row)).length;
   const approvalId = `APR-${runDate}-${Date.now()}`;
   const outputRoot = outputRootForRun(runDate);
   const approvedDir = path.join(outputRoot, "approved_replenishment");

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Columns3 } from "lucide-react";
+import { Columns3, FileDown } from "lucide-react";
 import type { WorkingRow } from "@/lib/domain/types";
 import { money, whole } from "@/lib/utils/formatters";
 import { ConstraintBadge, RiskBadge } from "@/components/replenishment/RowStatusBadge";
@@ -20,7 +20,9 @@ export function ReplenishmentTable({
   onImpactSortChange,
   onFinalQtyChange,
   onCommentChange,
-  onOpenRow
+  onOpenRow,
+  onRiskClick,
+  onExport
 }: {
   rows: WorkingRow[];
   totalRows: number;
@@ -31,6 +33,8 @@ export function ReplenishmentTable({
   onFinalQtyChange: (rowId: string, value: number) => void;
   onCommentChange: (rowId: string, value: string) => void;
   onOpenRow: (row: WorkingRow) => void;
+  onRiskClick: (row: WorkingRow) => void;
+  onExport: () => void;
 }) {
   const defaultColumns = [
     "select",
@@ -45,12 +49,12 @@ export function ReplenishmentTable({
     "pack",
     "dcFree",
     "risk",
-    "reason",
     "impact",
     "comment"
   ];
   const columnOptions = [
     { id: "sku", label: "SKU" },
+    { id: "requiredQty", label: "Required Qty" },
     { id: "inTransit", label: "In-transit quantity" },
     { id: "avgDailySales", label: "Average daily sales" },
     { id: "forecast14", label: "Forecast next 14 days" },
@@ -62,7 +66,8 @@ export function ReplenishmentTable({
     { id: "recoveredMargin", label: "Expected recovered margin" },
     { id: "confidence", label: "Forecast confidence" },
     { id: "promo", label: "Promo flag" },
-    { id: "constraint", label: "Constraint status" }
+    { id: "reason", label: "Reason" },
+    { id: "constraint", label: "Status" }
   ];
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(() => new Set(defaultColumns));
   const [columnsOpen, setColumnsOpen] = useState(false);
@@ -85,6 +90,14 @@ export function ReplenishmentTable({
           <p className="mt-1 text-sm text-cockpit-muted">Showing {rows.length} of {totalRows} matching rows. Narrow filters to inspect exceptions and approval candidates.</p>
         </div>
         <div className="relative flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={onExport}
+            className="inline-flex h-10 items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 text-xs font-semibold text-cyan-100 transition hover:border-cyan-200/40 hover:bg-cyan-400/16"
+          >
+            <FileDown size={14} />
+            Export table
+          </button>
           <select
             value={impactSort}
             onChange={(event) => onImpactSortChange(event.target.value as "none" | "desc" | "asc")}
@@ -134,6 +147,7 @@ export function ReplenishmentTable({
               {show("sku") ? <th className="w-[92px] border-r table-grid px-3 py-4">SKU</th> : null}
               {show("product") ? <th className="w-[142px] border-r table-grid px-3 py-4">Product</th> : null}
               {show("systemRec") ? <th className="w-[82px] border-r table-grid px-3 py-4 text-right">System rec.</th> : null}
+              {show("requiredQty") ? <th className="w-[86px] border-r table-grid px-3 py-4 text-right">Required qty</th> : null}
               {show("finalQty") ? <th className="w-[106px] border-r table-grid px-3 py-4 text-right text-cockpit-text">Final qty</th> : null}
               {show("stockOnHand") ? <th className="w-[82px] border-r table-grid px-3 py-4 text-right">Stock on hand</th> : null}
               {show("inTransit") ? <th className="w-[84px] border-r table-grid px-3 py-4 text-right">In transit</th> : null}
@@ -154,7 +168,7 @@ export function ReplenishmentTable({
               {show("promo") ? <th className="w-[64px] border-r table-grid px-3 py-4">Promo</th> : null}
               {show("risk") ? <th className="w-[104px] border-r table-grid px-3 py-4">Risk</th> : null}
               {show("reason") ? <th className="w-[150px] border-r table-grid px-3 py-4">Reason</th> : null}
-              {show("constraint") ? <th className="w-[110px] border-r table-grid px-3 py-4">Constraint</th> : null}
+              {show("constraint") ? <th className="w-[110px] border-r table-grid px-3 py-4">Status</th> : null}
               {show("comment") ? <th className="w-[156px] px-3 py-4">Comment</th> : null}
             </tr>
           </thead>
@@ -174,11 +188,9 @@ export function ReplenishmentTable({
                 {show("sku") ? <td className="border-r table-grid px-3 py-4 font-mono text-xs text-cockpit-muted">{row.skuId}</td> : null}
                 {show("product") ? <td className="border-r table-grid px-3 py-4 font-semibold text-cockpit-text">{row.styleColorSize}</td> : null}
                 {show("systemRec") ? <td className="border-r table-grid px-3 py-4 text-right font-semibold">{whole(row.systemRecommendedQty)}</td> : null}
+                {show("requiredQty") ? <td className="border-r table-grid px-3 py-4 text-right font-semibold text-cockpit-muted">{whole(row.requiredQty)}</td> : null}
                 {show("finalQty") ? <td className="border-r table-grid px-3 py-4 text-right">
-                  <div className="flex flex-col items-end gap-1">
-                    <QuantityEditor value={row.finalQty} onChange={(value) => onFinalQtyChange(row.id, value)} />
-                    {row.manualOverride ? <span className="rounded-full border border-blue-300/20 bg-blue-400/10 px-2 py-0.5 text-[10px] font-semibold text-blue-100">Edited</span> : null}
-                  </div>
+                  <QuantityEditor value={row.finalQty} onCommit={(value) => onFinalQtyChange(row.id, value)} />
                 </td> : null}
                 {show("stockOnHand") ? <td className="border-r table-grid px-3 py-4 text-right">{whole(row.stockOnHand)}</td> : null}
                 {show("inTransit") ? <td className="border-r table-grid px-3 py-4 text-right">{whole(row.inTransitQty)}</td> : null}
@@ -197,14 +209,18 @@ export function ReplenishmentTable({
                 {show("recoveredMargin") ? <td className="border-r table-grid px-3 py-4 text-right text-cockpit-green">{money(row.expectedRecoveredMargin)}</td> : null}
                 {show("confidence") ? <td className="border-r table-grid px-3 py-4 text-right">{Math.round(row.forecastConfidence * 100)}%</td> : null}
                 {show("promo") ? <td className="border-r table-grid px-3 py-4">{row.promoFlag ? "Yes" : "No"}</td> : null}
-                {show("risk") ? <td className="border-r table-grid px-3 py-4"><RiskBadge risk={row.riskLevel} /></td> : null}
+                {show("risk") ? <td className="border-r table-grid px-3 py-4">
+                  <button type="button" onClick={() => onRiskClick(row)} className="rounded-full outline-none transition hover:scale-[1.02] focus:ring-2 focus:ring-blue-300/40">
+                    <RiskBadge risk={row.riskLevel} />
+                  </button>
+                </td> : null}
                 {show("reason") ? <td className="border-r table-grid px-3 py-4 text-cockpit-muted"><div className="max-h-10 overflow-hidden leading-5">{row.reasonCode}</div></td> : null}
                 {show("constraint") ? <td className="border-r table-grid px-3 py-4"><ConstraintBadge status={row.constraintStatus} /></td> : null}
                 {show("comment") ? <td className="px-3 py-4">
                   <input
                     value={row.comment}
                     onChange={(event) => onCommentChange(row.id, event.target.value)}
-                    placeholder={row.manualOverride ? "Required" : "Optional"}
+                    placeholder={row.manualOverride ? "Required" : ""}
                     className={`h-10 w-full rounded-xl border bg-[#071225] px-3 text-sm text-cockpit-text outline-none transition focus:border-blue-300/60 focus:bg-blue-500/10 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.12)] ${
                       row.manualOverride && !row.comment.trim() ? "border-red-400/70" : "border-cockpit-line"
                     }`}

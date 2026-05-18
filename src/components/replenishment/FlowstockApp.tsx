@@ -21,6 +21,7 @@ import { Card } from "@/components/common/Card";
 import { Badge } from "@/components/common/Badge";
 import { GlassCard } from "@/components/common/GlassCard";
 import { money, whole } from "@/lib/utils/formatters";
+import { isApprovalBlocked } from "@/lib/domain/constraints";
 
 const emptyKpis: Kpis = {
   inventoryValue: 0,
@@ -70,6 +71,267 @@ function filterRows(rows: WorkingRow[], filters: Filters): WorkingRow[] {
   });
 }
 
+function csvValue(value: unknown): string {
+  const text = String(value ?? "");
+  if (/[",\n]/.test(text)) return `"${text.replaceAll('"', '""')}"`;
+  return text;
+}
+
+function exportRowsToCsv(rows: WorkingRow[], activeScenario: string) {
+  const columns: Array<[string, (row: WorkingRow) => string | number]> = [
+    ["Store ID", (row) => row.storeId],
+    ["Store", (row) => row.storeName],
+    ["Category", (row) => row.category],
+    ["SKU", (row) => row.skuId],
+    ["Product", (row) => row.styleColorSize],
+    ["Product description", (row) => row.productDescription],
+    ["System rec.", (row) => row.systemRecommendedQty],
+    ["Final qty", (row) => row.finalQty],
+    ["Required qty", (row) => row.requiredQty],
+    ["Stock on hand", (row) => row.stockOnHand],
+    ["In transit", (row) => row.inTransitQty],
+    ["Average daily sales", (row) => row.averageDailySales],
+    ["Forecast 7d", (row) => row.forecastNext7],
+    ["Forecast 14d", (row) => row.forecastNext14],
+    ["Days cover", (row) => row.daysOfCover],
+    ["Projected days cover", (row) => row.projectedDaysOfCover],
+    ["Days to delivery", (row) => row.daysToDelivery],
+    ["Pack / MOQ", (row) => row.packMultiple],
+    ["DC total stock", (row) => row.dcTotalStock],
+    ["DC free stock", (row) => row.dcFreeStock],
+    ["Revenue at risk", (row) => row.revenueAtRisk],
+    ["Margin at risk", (row) => row.marginAtRisk],
+    ["Expected recovered revenue", (row) => row.expectedRecoveredRevenue],
+    ["Expected recovered margin", (row) => row.expectedRecoveredMargin],
+    ["Forecast confidence", (row) => row.forecastConfidence],
+    ["Promo flag", (row) => (row.promoFlag ? "Yes" : "No")],
+    ["Risk", (row) => row.riskLevel],
+    ["Reason", (row) => row.reasonCode],
+    ["Status", (row) => row.constraintStatus],
+    ["Constraint messages", (row) => row.constraintMessages.join("; ")],
+    ["Manual override", (row) => (row.manualOverride ? "Yes" : "No")],
+    ["Comment", (row) => row.comment],
+    ["Route", (row) => row.routeId],
+    ["Delivery day", (row) => row.deliveryDay]
+  ];
+  const csv = [
+    columns.map(([label]) => csvValue(label)).join(","),
+    ...rows.map((row) => columns.map(([, get]) => csvValue(get(row))).join(","))
+  ].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  const scenarioName = activeScenario ? activeScenario.toLowerCase().replaceAll(" ", "-") : "manual-plan";
+  anchor.href = url;
+  anchor.download = `flowstock-table-${scenarioName}-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+function availableDcForEditedRow(rows: WorkingRow[], edited: WorkingRow): number {
+  return Math.max(
+    0,
+    (edited.dcFreeStockOriginal ?? edited.dcFreeStock) -
+      rows.reduce((sum, row) => sum + (row.skuId === edited.skuId && row.id !== edited.id ? row.finalQty : 0), 0)
+  );
+}
+
+function validationNoticesForEdit(rows: WorkingRow[], editedRowId: string): string[] {
+  const row = rows.find((candidate) => candidate.id === editedRowId);
+  if (!row) return [];
+  const notices: string[] = [];
+  if (row.constraintMessages.some((message) => message.includes("DC free stock"))) {
+    const available = availableDcForEditedRow(rows, row);
+    notices.push(`DC stock exceeded. Available: ${whole(available)}, entered: ${whole(row.finalQty)}.`);
+  }
+  if (row.finalQty > 0 && row.finalQty % row.packMultiple !== 0) {
+    notices.push(`Final Qty must be a multiple of Pack / MOQ: ${whole(row.packMultiple)}.`);
+  }
+  return notices;
+}
+
+const tableRiskRank: Record<WorkingRow["riskLevel"], number> = { High: 3, Medium: 2, Low: 1 };
+
+type RiskGroup = "High" | "Medium" | "Low";
+
+function uncoveredQty(row: WorkingRow): number {
+  return Math.max(0, row.requiredQty - row.finalQty);
+}
+
+function recommendationExplanation(row: WorkingRow, activeScenario: string): string {
+  const riskWhy = row.riskLevel === "High"
+    ? "This row is High risk because days cover is low, revenue at risk is high, or stockout is projected."
+    : row.riskLevel === "Medium"
+      ? "This row is Medium risk because cover, confidence, or DC availability needs attention."
+      : "This row is Low risk because the current cover position is relatively healthy.";
+  if (row.constraintStatus === "Blocked") return `${riskWhy} Status is Blocked because the row has a blocker-level data issue or missing required data.`;
+  if (row.requiredQty <= 0) return `${riskWhy} Required Qty is the baseline need before scenario recommendation. It is 0 because available stock covers forecast demand.`;
+  if (row.systemRecommendedQty <= 0) {
+    if (row.reasonCode.includes("no DC free stock")) return `${riskWhy} Required Qty is the baseline need before scenario recommendation: ${whole(row.requiredQty)}. System recommended 0 because DC free stock for this SKU is 0 after higher-priority allocation.`;
+    if (row.reasonCode.includes("below Pack / MOQ")) return `${riskWhy} Required Qty is the baseline need before scenario recommendation: ${whole(row.requiredQty)}. System recommended 0 because remaining DC free stock is below the Pack / MOQ.`;
+    if (row.reasonCode.includes("no forecast demand")) return `${riskWhy} Required Qty is 0 because there is no forecast demand.`;
+    return `${riskWhy} Required Qty is the baseline need before scenario recommendation: ${whole(row.requiredQty)}. System recommended 0 because data quality or DC availability prevents a shipment.`;
+  }
+  if (row.systemRecommendedQty < row.requiredQty) return `${riskWhy} Required Qty is the baseline need before scenario recommendation: ${whole(row.requiredQty)}. System recommended ${whole(row.systemRecommendedQty)} because ${activeScenario || "the scenario"} partially covered the need using available DC stock and Pack / MOQ rules.`;
+  return `${riskWhy} Required Qty is the baseline need before scenario recommendation: ${whole(row.requiredQty)}. System recommended ${whole(row.systemRecommendedQty)} and all data checks passed.`;
+}
+
+function driverForRow(row: WorkingRow): string {
+  const reason = row.reasonCode.toLowerCase();
+  if (row.constraintStatus === "Blocked") return "data blocked";
+  if (reason.includes("no dc free stock")) return "no DC stock";
+  if (reason.includes("dc shortage allocation")) return "partial DC shortage";
+  if (reason.includes("below pack")) return "MOQ rounding";
+  if (reason.includes("pack multiple") || reason.includes("moq")) return "MOQ rounding";
+  if (row.requiredQty <= 0 || reason.includes("no replenishment needed")) return "not needed";
+  return "other";
+}
+
+function ScenarioSummary({ activeScenario, rows, onRiskGroupClick }: { activeScenario: string; rows: WorkingRow[]; onRiskGroupClick: (risk: RiskGroup) => void }) {
+  if (!activeScenario) return null;
+  const groups = (["High", "Medium", "Low"] as const).map((risk) => {
+    const groupRows = rows.filter((row) => row.riskLevel === risk);
+    return {
+      risk,
+      replenished: groupRows.reduce((sum, row) => sum + row.finalQty, 0),
+      required: groupRows.reduce((sum, row) => sum + row.requiredQty, 0),
+      recovered: groupRows.reduce((sum, row) => sum + row.expectedRecoveredRevenue, 0),
+      atRisk: groupRows.reduce((sum, row) => sum + row.revenueAtRisk, 0)
+    };
+  });
+
+  return (
+    <section className="glass-panel rounded-3xl p-5">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cockpit-muted">Active scenario</p>
+          <h2 className="mt-1 text-lg font-semibold text-cockpit-text">{activeScenario}</h2>
+        </div>
+        <div className="grid flex-1 grid-cols-1 gap-3 md:grid-cols-3 xl:max-w-5xl">
+          {groups.map((group) => (
+            <button key={group.risk} type="button" onClick={() => onRiskGroupClick(group.risk)} className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-left transition hover:border-blue-300/30 hover:bg-blue-400/10">
+              <p className={`text-sm font-semibold ${group.risk === "High" ? "text-red-200" : group.risk === "Medium" ? "text-amber-200" : "text-emerald-200"}`}>{group.risk} risk</p>
+              <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-cockpit-muted">
+                <div>
+                  <span className="block">Replenished qty</span>
+                  <strong className="mt-1 block text-sm text-cockpit-text">{whole(group.replenished)} / {whole(group.required)}</strong>
+                </div>
+                <div>
+                  <span className="block">Recovered revenue</span>
+                  <strong className="mt-1 block text-sm text-cockpit-text">{money(group.recovered)} / {money(group.atRisk)}</strong>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function RowRiskExplanationCard({ row, activeScenario, onClose }: { row: WorkingRow; activeScenario: string; onClose: () => void }) {
+  const metrics = [
+    ["Status", row.constraintStatus],
+    ["Required Qty", whole(row.requiredQty)],
+    ["System rec.", whole(row.systemRecommendedQty)],
+    ["Final Qty", whole(row.finalQty)],
+    ["Uncovered Qty", whole(uncoveredQty(row))],
+    ["Stock on hand", whole(row.stockOnHand)],
+    ["In transit", whole(row.inTransitQty)],
+    ["Forecast 7d", whole(row.forecastNext7)],
+    ["Days cover", whole(row.daysOfCover)],
+    ["Pack / MOQ", whole(row.packMultiple)],
+    ["DC free stock", whole(row.dcFreeStock)],
+    ["Scenario", activeScenario || "No scenario run"]
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#020617]/55 p-4 backdrop-blur-sm">
+      <div className="glass-panel-strong w-full max-w-2xl rounded-3xl p-6 shadow-cockpit">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cockpit-muted">Risk explanation</p>
+            <h2 className="mt-1 text-xl font-semibold text-cockpit-text">{row.riskLevel} risk · {row.storeName}</h2>
+            <p className="mt-1 text-sm text-cockpit-muted">{row.skuId} · {row.styleColorSize}</p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-xl border border-white/10 bg-white/[0.045] px-3 py-2 text-sm text-cockpit-muted hover:text-cockpit-text">Close</button>
+        </div>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {metrics.map(([label, value]) => (
+            <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+              <p className="text-xs text-cockpit-muted">{label}</p>
+              <p className="mt-1 text-sm font-semibold text-cockpit-text">{value}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-5 rounded-2xl border border-blue-300/15 bg-blue-400/8 p-4 text-sm leading-6 text-cockpit-muted">
+          {recommendationExplanation(row, activeScenario)}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function RiskGroupExplanationCard({ risk, rows, onClose }: { risk: RiskGroup; rows: WorkingRow[]; onClose: () => void }) {
+  const groupRows = rows.filter((row) => row.riskLevel === risk);
+  const totals = {
+    required: groupRows.reduce((sum, row) => sum + row.requiredQty, 0),
+    system: groupRows.reduce((sum, row) => sum + row.systemRecommendedQty, 0),
+    final: groupRows.reduce((sum, row) => sum + row.finalQty, 0),
+    uncovered: groupRows.reduce((sum, row) => sum + uncoveredQty(row), 0),
+    recovered: groupRows.reduce((sum, row) => sum + row.expectedRecoveredRevenue, 0),
+    stillAtRisk: groupRows.reduce((sum, row) => sum + Math.max(0, row.revenueAtRisk - row.expectedRecoveredRevenue), 0),
+    valid: groupRows.filter((row) => row.constraintStatus === "Valid").length,
+    blocked: groupRows.filter((row) => row.constraintStatus === "Blocked").length
+  };
+  const drivers = ["no DC stock", "partial DC shortage", "MOQ rounding", "not needed", "data blocked"] as const;
+  const driverRows = drivers.map((driver) => ({
+    driver,
+    qty: groupRows.filter((row) => driverForRow(row) === driver).reduce((sum, row) => sum + uncoveredQty(row), 0)
+  })).filter((driver) => driver.qty > 0);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#020617]/55 p-4 backdrop-blur-sm">
+      <div className="glass-panel-strong w-full max-w-2xl rounded-3xl p-6 shadow-cockpit">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cockpit-muted">Risk group explanation</p>
+            <h2 className="mt-1 text-xl font-semibold text-cockpit-text">{risk} risk</h2>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-xl border border-white/10 bg-white/[0.045] px-3 py-2 text-sm text-cockpit-muted hover:text-cockpit-text">Close</button>
+        </div>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3"><p className="text-xs text-cockpit-muted">Required Qty</p><p className="mt-1 font-semibold">{whole(totals.required)}</p></div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3"><p className="text-xs text-cockpit-muted">System Rec.</p><p className="mt-1 font-semibold">{whole(totals.system)}</p></div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3"><p className="text-xs text-cockpit-muted">Final Qty</p><p className="mt-1 font-semibold">{whole(totals.final)}</p></div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3"><p className="text-xs text-cockpit-muted">Uncovered Qty</p><p className="mt-1 font-semibold">{whole(totals.uncovered)}</p></div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3"><p className="text-xs text-cockpit-muted">Recovered revenue</p><p className="mt-1 font-semibold">{money(totals.recovered)}</p></div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3"><p className="text-xs text-cockpit-muted">Revenue still at risk</p><p className="mt-1 font-semibold">{money(totals.stillAtRisk)}</p></div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3"><p className="text-xs text-cockpit-muted">Rows</p><p className="mt-1 font-semibold">{whole(groupRows.length)}</p></div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3"><p className="text-xs text-cockpit-muted">Status</p><p className="mt-1 font-semibold">{whole(totals.valid)} valid / {whole(totals.blocked)} blocked</p></div>
+        </div>
+        <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+          <p className="mb-3 text-sm font-semibold text-cockpit-text">Main drivers of uncovered quantity</p>
+          {driverRows.length ? (
+            <div className="space-y-2">
+              {driverRows.map((driver) => (
+                <div key={driver.driver} className="flex items-center justify-between text-sm text-cockpit-muted">
+                  <span>{driver.driver}</span>
+                  <span className="font-semibold text-cockpit-text">{whole(driver.qty)}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-cockpit-muted">No uncovered quantity in this risk group.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SupportingPanels({
   rows,
   dataIssueCount,
@@ -92,8 +354,8 @@ function SupportingPanels({
     return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 4);
   }, [rows]);
   const maxReason = Math.max(1, ...reasonCounts.map(([, count]) => count));
-  const safeRows = rows.filter((row) => row.finalQty > 0 && row.constraintStatus !== "Blocked").length;
-  const blockedRows = rows.filter((row) => row.constraintStatus === "Blocked").length;
+  const safeRows = rows.filter((row) => row.finalQty > 0 && !isApprovalBlocked(row)).length;
+  const blockedRows = rows.filter((row) => row.finalQty > 0 && isApprovalBlocked(row)).length;
 
   const actions = [
     { label: "Approve all", detail: `${safeRows} valid rows`, icon: <CheckCircle2 size={28} />, onClick: onApproveAll, color: "text-emerald-200 bg-emerald-400/12 ring-emerald-300/20" },
@@ -181,6 +443,10 @@ export default function FlowstockApp() {
   const [pendingApproval, setPendingApproval] = useState<{ rows: WorkingRow[]; blocked: number } | null>(null);
   const [shippingPromptOpen, setShippingPromptOpen] = useState(false);
   const [lastApproval, setLastApproval] = useState<ApprovalResponse | null>(null);
+  const [validationNotices, setValidationNotices] = useState<string[]>([]);
+  const [frozenOrderIds, setFrozenOrderIds] = useState<string[] | null>(null);
+  const [explanationRow, setExplanationRow] = useState<WorkingRow | null>(null);
+  const [explanationRiskGroup, setExplanationRiskGroup] = useState<RiskGroup | null>(null);
 
   async function refresh() {
     setLoading(true);
@@ -199,6 +465,7 @@ export default function FlowstockApp() {
       setPackagePath(data.packagePath);
       setActiveScenario("");
       setImpactSort("none");
+      setFrozenOrderIds(null);
       setMessage(`Loaded ${data.rows.length.toLocaleString()} store-SKU rows.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not refresh package.");
@@ -213,18 +480,37 @@ export default function FlowstockApp() {
 
   const filteredRows = useMemo(() => filterRows(rows, filters), [rows, filters]);
   const sortedFilteredRows = useMemo(() => {
-    if (impactSort === "none") return filteredRows;
-    return [...filteredRows].sort((a, b) => {
+    const baseRows = impactSort === "none" ? filteredRows : [...filteredRows].sort((a, b) => {
+      const riskDelta = tableRiskRank[b.riskLevel] - tableRiskRank[a.riskLevel];
+      if (riskDelta !== 0) return riskDelta;
       const aImpact = a.expectedRecoveredRevenue || a.revenueAtRisk;
       const bImpact = b.expectedRecoveredRevenue || b.revenueAtRisk;
       return impactSort === "desc" ? bImpact - aImpact : aImpact - bImpact;
     });
-  }, [filteredRows, impactSort]);
+
+    if (!frozenOrderIds) return baseRows;
+
+    const frozenOrder = new Map(frozenOrderIds.map((id, index) => [id, index]));
+    const baseOrder = new Map(baseRows.map((row, index) => [row.id, index]));
+    return [...baseRows].sort((a, b) => {
+      const aFrozen = frozenOrder.get(a.id);
+      const bFrozen = frozenOrder.get(b.id);
+      if (aFrozen !== undefined && bFrozen !== undefined) return aFrozen - bFrozen;
+      if (aFrozen !== undefined) return -1;
+      if (bFrozen !== undefined) return 1;
+      return (baseOrder.get(a.id) ?? 0) - (baseOrder.get(b.id) ?? 0);
+    });
+  }, [filteredRows, frozenOrderIds, impactSort]);
   const visibleRows = sortedFilteredRows.slice(0, 350);
   const stores = useMemo(() => Array.from(new Set(rows.map((row) => row.storeName))).sort(), [rows]);
   const categories = useMemo(() => Array.from(new Set(rows.map((row) => row.category))).sort(), [rows]);
   const selectedRows = rows.filter((row) => row.selected);
-  const validVisibleRows = filteredRows.filter((row) => row.finalQty > 0 && row.constraintStatus !== "Blocked");
+  const validVisibleRows = filteredRows.filter((row) => row.finalQty > 0 && !isApprovalBlocked(row));
+
+  function exportCurrentTable() {
+    exportRowsToCsv(sortedFilteredRows, activeScenario);
+    setMessage(`Exported ${sortedFilteredRows.length.toLocaleString()} filtered rows to CSV.`);
+  }
 
   async function runScenario(scenario: ScenarioKey) {
     setLoading(true);
@@ -241,6 +527,7 @@ export default function FlowstockApp() {
       setSimulationKpis(data.simulationKpis);
       setActiveScenario(scenarioForKey(scenario).name);
       setImpactSort("desc");
+      setFrozenOrderIds(null);
       setMessage(`${scenarioForKey(scenario).name} populated system and final quantities.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not run scenario.");
@@ -267,7 +554,13 @@ export default function FlowstockApp() {
   }
 
   function setFinalQty(rowId: string, value: number) {
-    updateRows((row) => (row.id === rowId ? { ...row, finalQty: value } : row));
+    setFrozenOrderIds(sortedFilteredRows.map((row) => row.id));
+    setRows((current) => {
+      const next = recalculateRows(current.map((row) => (row.id === rowId ? { ...row, finalQty: value } : row)));
+      setSimulationKpis(calculateKpis(next, true));
+      setValidationNotices(validationNoticesForEdit(next, rowId));
+      return next;
+    });
   }
 
   function setComment(rowId: string, value: string) {
@@ -277,7 +570,7 @@ export default function FlowstockApp() {
   function requestApproval(scope: "selected" | "visible") {
     const source = scope === "selected" ? selectedRows : sortedFilteredRows;
     const candidates = source.filter((row) => row.finalQty > 0);
-    const valid = candidates.filter((row) => row.constraintStatus !== "Blocked");
+    const valid = candidates.filter((row) => !isApprovalBlocked(row));
     const blocked = candidates.length - valid.length;
     if (valid.length === 0) {
       setMessage("No valid rows with final quantity greater than zero are available for approval.");
@@ -319,7 +612,7 @@ export default function FlowstockApp() {
     <main className="premium-shell min-h-screen bg-cockpit-bg text-cockpit-text">
       <AppHeader runDate={runDate} packagePath={packagePath} loading={loading} onRefresh={refresh} />
       <div className="lg:flex">
-        <Sidebar activeView={activeView} onChange={setActiveView} />
+        <Sidebar activeView={activeView} onChange={setActiveView} onExport={exportCurrentTable} />
         <div className="mx-auto min-w-0 max-w-[1780px] flex-1 space-y-8 p-8">
           {message ? (
             <div className="glass-panel rounded-2xl px-5 py-4 text-sm text-cockpit-muted">{message}</div>
@@ -346,17 +639,31 @@ export default function FlowstockApp() {
               <KpiPanel title="Current State" current={currentKpis} simulation={simulationKpis} />
               <KpiPanel title="Simulation" current={currentKpis} simulation={simulationKpis} />
               <ScenarioButtons activeScenario={activeScenario} loading={loading} onRun={runScenario} />
-              <TableFilters filters={filters} stores={stores} categories={categories} onChange={setFilters} />
+              <TableFilters
+                filters={filters}
+                stores={stores}
+                categories={categories}
+                onChange={(nextFilters) => {
+                  setFrozenOrderIds(null);
+                  setFilters(nextFilters);
+                }}
+              />
+              <ScenarioSummary activeScenario={activeScenario} rows={rows} onRiskGroupClick={setExplanationRiskGroup} />
               <ReplenishmentTable
                 rows={visibleRows}
                 totalRows={sortedFilteredRows.length}
                 impactSort={impactSort}
                 onSelect={selectRow}
                 onSelectAllVisible={selectAllVisible}
-                onImpactSortChange={setImpactSort}
+                onImpactSortChange={(sort) => {
+                  setFrozenOrderIds(null);
+                  setImpactSort(sort);
+                }}
                 onFinalQtyChange={setFinalQty}
                 onCommentChange={setComment}
                 onOpenRow={setDrawerRow}
+                onRiskClick={setExplanationRow}
+                onExport={exportCurrentTable}
               />
               <SupportingPanels
                 rows={rows}
@@ -411,6 +718,39 @@ export default function FlowstockApp() {
       </div>
 
       <RowExplanationDrawer row={drawerRow} onClose={() => setDrawerRow(null)} />
+      {explanationRow ? (
+        <RowRiskExplanationCard row={explanationRow} activeScenario={activeScenario} onClose={() => setExplanationRow(null)} />
+      ) : null}
+      {explanationRiskGroup ? (
+        <RiskGroupExplanationCard risk={explanationRiskGroup} rows={rows} onClose={() => setExplanationRiskGroup(null)} />
+      ) : null}
+      {validationNotices.length ? (
+        <div className="fixed inset-0 z-50 flex pointer-events-none items-start justify-center px-4 pt-[22vh]">
+          <div className="pointer-events-auto w-full max-w-xl space-y-3">
+            {validationNotices.map((notice, index) => (
+              <div
+                key={notice}
+                className={`rounded-2xl border p-4 text-sm shadow-cockpit backdrop-blur ${
+                  index === 0 && notice.toLowerCase().includes("dc stock")
+                    ? "border-red-300/40 bg-[#1b1019]/95 text-red-100"
+                    : "border-amber-300/35 bg-[#101827]/95 text-amber-100"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className={`mt-0.5 shrink-0 ${index === 0 && notice.toLowerCase().includes("dc stock") ? "text-red-300" : "text-amber-300"}`} size={18} />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-cockpit-text">{index === 0 && notice.toLowerCase().includes("dc stock") ? "DC stock exceeded" : "Final Qty needs review"}</p>
+                    <p className="mt-1 opacity-95">{notice}</p>
+                  </div>
+                  <button type="button" onClick={() => setValidationNotices([])} className="ml-2 text-cockpit-muted hover:text-cockpit-text">
+                    Close
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
       {pendingApproval && !shippingPromptOpen ? (
         <ApprovalModal
           rows={pendingApproval.rows}

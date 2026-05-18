@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { recalculateRows } from "../src/lib/domain/kpiCalculations";
+import { isApprovalBlocked } from "../src/lib/domain/constraints";
 import { makeRow } from "./testRows";
 
 describe("approval constraints", () => {
@@ -7,7 +8,8 @@ describe("approval constraints", () => {
     const [row] = recalculateRows([makeRow({ systemRecommendedQty: 6, finalQty: 12 })]);
 
     expect(row.manualOverride).toBe(true);
-    expect(row.constraintStatus).toBe("Blocked");
+    expect(row.constraintStatus).toBe("Valid");
+    expect(isApprovalBlocked(row)).toBe(true);
     expect(row.constraintMessages).toContain("Manual override needs a comment");
   });
 
@@ -16,6 +18,13 @@ describe("approval constraints", () => {
 
     expect(row.manualOverride).toBe(true);
     expect(row.constraintStatus).not.toBe("Blocked");
+    expect(isApprovalBlocked(row)).toBe(false);
+  });
+
+  it("uses Blocked status only for blocker data quality issues", () => {
+    const [row] = recalculateRows([makeRow({ dataIssue: true, dataIssueSeverity: "Blocker" })]);
+
+    expect(row.constraintStatus).toBe("Blocked");
   });
 
   it("recalculates remaining DC free stock from all final quantities", () => {
@@ -35,5 +44,6 @@ describe("approval constraints", () => {
     ]);
 
     expect(rows.some((row) => row.constraintMessages.includes("Final quantity exceeds DC free stock after all edits"))).toBe(true);
+    expect(rows.some((row) => isApprovalBlocked(row))).toBe(true);
   });
 });

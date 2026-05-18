@@ -5,6 +5,7 @@ import { n, round } from "@/lib/utils/numbers";
 import { daysUntilDelivery } from "@/lib/utils/dates";
 import { riskForRow } from "@/lib/domain/riskScoring";
 import { recalculateRows } from "@/lib/domain/kpiCalculations";
+import { baselineRequiredQty } from "@/lib/domain/baseline";
 
 export type LoadedPackage = {
   runDate: string;
@@ -81,6 +82,20 @@ export async function loadCsvPackage(packagePath: string): Promise<LoadedPackage
     const grossMarginPct = n(sku.gross_margin_pct);
     const currentLostUnits = Math.max(0, forecastNext14 - stockOnHand - inTransitQty);
     const dcFreeStock = n(dcRow.dc_free_stock);
+    const baselineRevenueAtRisk = round(currentLostUnits * sellingPrice, 2);
+    const baselineInput = {
+      stockOnHand,
+      inTransitQty,
+      averageDailySales,
+      forecastNext7: n(forecast.forecast_next_7_units),
+      daysOfCover: round(Math.min(daysOfCover, 999), 1),
+      packMultiple: Math.max(1, n(sku.pack_multiple, 1)),
+      promoUpliftPct: n(forecast.promo_uplift_pct),
+      seasonalIndex: n(forecast.seasonal_index, 1),
+      minPresentationQty: n(sku.min_presentation_qty),
+      minCoverDays: n(assortmentRow.min_cover_days, 7),
+      targetCoverDays: n(assortmentRow.target_cover_days, 14)
+    };
 
     return {
       id: key(inventory.store_id, inventory.sku_id),
@@ -93,28 +108,31 @@ export async function loadCsvPackage(packagePath: string): Promise<LoadedPackage
       skuId: inventory.sku_id,
       styleColorSize: sku.style_color_size ?? inventory.sku_id,
       productDescription: `${sku.subcategory ?? "Product"} ${sku.color ?? ""} ${sku.size ?? ""}`.trim(),
+      baselineRequiredQty: baselineRequiredQty(baselineInput),
+      baselineRevenueAtRisk,
+      requiredQty: baselineRequiredQty(baselineInput),
       systemRecommendedQty: 0,
       finalQty: 0,
       stockOnHand,
       inTransitQty,
       averageDailySales,
-      forecastNext7: n(forecast.forecast_next_7_units),
+      forecastNext7: baselineInput.forecastNext7,
       forecastNext14,
       daysOfCover: round(Math.min(daysOfCover, 999), 1),
       projectedDaysOfCover: round(Math.min(daysOfCover, 999), 1),
       daysToDelivery: daysUntilDelivery(runDate, store.delivery_day ?? "Monday"),
-      packMultiple: Math.max(1, n(sku.pack_multiple, 1)),
+      packMultiple: baselineInput.packMultiple,
       dcTotalStock: n(dcRow.dc_total_stock),
       dcFreeStock,
       dcFreeStockOriginal: dcFreeStock,
-      revenueAtRisk: round(currentLostUnits * sellingPrice, 2),
+      revenueAtRisk: baselineRevenueAtRisk,
       marginAtRisk: round(currentLostUnits * sellingPrice * grossMarginPct, 2),
       expectedRecoveredRevenue: 0,
       expectedRecoveredMargin: 0,
       forecastConfidence: n(forecast.forecast_confidence, 0.75),
       promoFlag: forecast.promo_flag_next_28d === "1" || n(forecast.promo_uplift_pct) > 0,
-      promoUpliftPct: n(forecast.promo_uplift_pct),
-      seasonalIndex: n(forecast.seasonal_index, 1),
+      promoUpliftPct: baselineInput.promoUpliftPct,
+      seasonalIndex: baselineInput.seasonalIndex,
       riskLevel: "Low",
       reasonCode: "No replenishment needed",
       constraintStatus: "Valid",
@@ -133,9 +151,9 @@ export async function loadCsvPackage(packagePath: string): Promise<LoadedPackage
       unitCost: n(sku.unit_cost),
       sellingPrice,
       grossMarginPct,
-      minPresentationQty: n(sku.min_presentation_qty),
-      targetCoverDays: n(assortmentRow.target_cover_days, 14),
-      minCoverDays: n(assortmentRow.min_cover_days, 7),
+      minPresentationQty: baselineInput.minPresentationQty,
+      targetCoverDays: baselineInput.targetCoverDays,
+      minCoverDays: baselineInput.minCoverDays,
       maxCoverDays: n(assortmentRow.max_cover_days, 21),
       serviceLevelTarget: n(assortmentRow.service_level_target, 0.9),
       storeSkuPriority: n(assortmentRow.store_sku_priority, n(store.store_priority, 0.75)),
