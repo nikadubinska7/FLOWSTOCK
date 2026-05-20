@@ -17,6 +17,7 @@ import { ShippingDocsModal } from "@/components/replenishment/ShippingDocsModal"
 import { RowExplanationDrawer } from "@/components/replenishment/RowExplanationDrawer";
 import { DataIssuesPanel } from "@/components/data-issues/DataIssuesPanel";
 import { ScenarioComparison } from "@/components/scenario/ScenarioComparison";
+import { FlowstockAIModal, type FlowstockAIContext } from "@/components/ai/FlowstockAIModal";
 import { Card } from "@/components/common/Card";
 import { Badge } from "@/components/common/Badge";
 import { GlassCard } from "@/components/common/GlassCard";
@@ -187,6 +188,93 @@ function driverForRow(row: WorkingRow): string {
   if (reason.includes("pack multiple") || reason.includes("moq")) return "MOQ rounding";
   if (row.requiredQty <= 0 || reason.includes("no replenishment needed")) return "not needed";
   return "other";
+}
+
+function compactRow(row: WorkingRow): Record<string, string | number | boolean> {
+  return {
+    store_id: row.storeId,
+    store_name: row.storeName,
+    sku_id: row.skuId,
+    product: row.styleColorSize,
+    category: row.category,
+    risk_level: row.riskLevel,
+    status: row.constraintStatus,
+    required_qty: row.requiredQty,
+    system_recommended_qty: row.systemRecommendedQty,
+    final_qty: row.finalQty,
+    uncovered_qty: uncoveredQty(row),
+    stock_on_hand: row.stockOnHand,
+    in_transit_qty: row.inTransitQty,
+    forecast_7d: row.forecastNext7,
+    days_cover: row.daysOfCover,
+    pack_moq: row.packMultiple,
+    dc_free_stock: row.dcFreeStock,
+    revenue_at_risk: row.revenueAtRisk,
+    recovered_revenue: row.expectedRecoveredRevenue,
+    expected_recovered_margin: row.expectedRecoveredMargin,
+    unit_cost: row.unitCost,
+    selling_price: row.sellingPrice,
+    gross_margin_pct: row.grossMarginPct,
+    forecast_14d: row.forecastNext14,
+    manual_override: row.manualOverride,
+    comment: row.comment,
+    reason: row.reasonCode,
+    data_issue: row.dataIssue,
+    data_issue_description: row.dataIssueDescription
+  };
+}
+
+function topReasons(rows: WorkingRow[]) {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const reasons = row.reasonCode.split("; ").filter(Boolean);
+    for (const reason of reasons.length ? reasons : ["No reason"]) {
+      counts.set(reason, (counts.get(reason) ?? 0) + 1);
+    }
+  }
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([reason, count]) => ({ reason, count }));
+}
+
+function uncoveredDriver(row: WorkingRow, activeScenario: string): string {
+  const reason = row.reasonCode.toLowerCase();
+  if (row.constraintStatus === "Blocked" || row.dataIssue) return "Data blocked or data issue";
+  if (row.systemRecommendedQty === 0 && row.requiredQty > 0 && reason.includes("no dc free stock")) return "No DC free stock";
+  if (row.systemRecommendedQty === 0 && row.requiredQty > 0 && reason.includes("below pack")) return "DC stock below Pack / MOQ";
+  if (row.systemRecommendedQty > 0 && row.systemRecommendedQty < row.requiredQty && reason.includes("dc shortage")) return "Partial DC shortage allocation";
+  if (row.systemRecommendedQty > 0 && row.systemRecommendedQty < row.requiredQty && activeScenario.toLowerCase().includes("lean")) return "Lean scenario conservative target";
+  if (row.systemRecommendedQty > 0 && row.systemRecommendedQty < row.requiredQty) return "Scenario recommends partial coverage";
+  if (row.finalQty < row.systemRecommendedQty) return "Manual reduction";
+  if (reason.includes("pack multiple")) return "Pack / MOQ rounding";
+  if (row.requiredQty > 0 && row.finalQty === 0) return "No replenishment recommended";
+  return "Other";
+}
+
+function uncoveredDriverSummary(rows: WorkingRow[], activeScenario: string) {
+  const summary = new Map<string, { rows: number; uncoveredQty: number; revenueAtRisk: number; recoveredRevenue: number }>();
+  for (const row of rows) {
+    const uncovered = uncoveredQty(row);
+    if (uncovered <= 0) continue;
+    const driver = uncoveredDriver(row, activeScenario);
+    const current = summary.get(driver) ?? { rows: 0, uncoveredQty: 0, revenueAtRisk: 0, recoveredRevenue: 0 };
+    current.rows += 1;
+    current.uncoveredQty += uncovered;
+    current.revenueAtRisk += row.revenueAtRisk;
+    current.recoveredRevenue += row.expectedRecoveredRevenue;
+    summary.set(driver, current);
+  }
+  return Array.from(summary.entries())
+    .map(([driver, values]) => ({
+      driver,
+      rows: values.rows,
+      uncovered_qty: Math.round(values.uncoveredQty),
+      revenue_at_risk: Math.round(values.revenueAtRisk),
+      recovered_revenue: Math.round(values.recoveredRevenue)
+    }))
+    .sort((a, b) => b.uncovered_qty - a.uncovered_qty)
+    .slice(0, 8);
 }
 
 function ScenarioSummary({ activeScenario, rows, onRiskGroupClick }: { activeScenario: string; rows: WorkingRow[]; onRiskGroupClick: (risk: RiskGroup) => void }) {
@@ -447,6 +535,7 @@ export default function FlowstockApp() {
   const [frozenOrderIds, setFrozenOrderIds] = useState<string[] | null>(null);
   const [explanationRow, setExplanationRow] = useState<WorkingRow | null>(null);
   const [explanationRiskGroup, setExplanationRiskGroup] = useState<RiskGroup | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
 
   async function refresh() {
     setLoading(true);
@@ -506,6 +595,130 @@ export default function FlowstockApp() {
   const categories = useMemo(() => Array.from(new Set(rows.map((row) => row.category))).sort(), [rows]);
   const selectedRows = rows.filter((row) => row.selected);
   const validVisibleRows = filteredRows.filter((row) => row.finalQty > 0 && !isApprovalBlocked(row));
+  const aiContext = useMemo<FlowstockAIContext>(() => {
+    const riskSummary = (["High", "Medium", "Low"] as const).map((risk) => {
+      const groupRows = rows.filter((row) => row.riskLevel === risk);
+      return {
+        risk,
+        row_count: groupRows.length,
+        valid_rows: groupRows.filter((row) => row.constraintStatus === "Valid").length,
+        blocked_rows: groupRows.filter((row) => row.constraintStatus === "Blocked").length,
+        baseline_required_qty: groupRows.reduce((sum, row) => sum + row.requiredQty, 0),
+        system_recommended_qty: groupRows.reduce((sum, row) => sum + row.systemRecommendedQty, 0),
+        final_qty: groupRows.reduce((sum, row) => sum + row.finalQty, 0),
+        uncovered_qty: groupRows.reduce((sum, row) => sum + uncoveredQty(row), 0),
+        net_uncovered_qty: Math.max(0, groupRows.reduce((sum, row) => sum + row.requiredQty, 0) - groupRows.reduce((sum, row) => sum + row.finalQty, 0)),
+        baseline_revenue_at_risk: groupRows.reduce((sum, row) => sum + row.revenueAtRisk, 0),
+        recovered_revenue: groupRows.reduce((sum, row) => sum + row.expectedRecoveredRevenue, 0)
+      };
+    });
+    const approvalRows = filteredRows.filter((row) => row.finalQty > 0);
+    const manualRows = rows.filter((row) => row.manualOverride);
+    const selectedContextRow = selectedRows[0] ?? drawerRow ?? explanationRow ?? null;
+    const lowValueRows = rows
+      .filter((row) => row.finalQty > 0)
+      .sort((a, b) => {
+        const aRevenuePerUnit = a.finalQty > 0 ? a.expectedRecoveredRevenue / a.finalQty : 0;
+        const bRevenuePerUnit = b.finalQty > 0 ? b.expectedRecoveredRevenue / b.finalQty : 0;
+        const riskDelta = tableRiskRank[a.riskLevel] - tableRiskRank[b.riskLevel];
+        if (riskDelta !== 0) return riskDelta;
+        return aRevenuePerUnit - bRevenuePerUnit;
+      });
+    const gmroiProxyRows = rows
+      .filter((row) => row.finalQty > 0)
+      .sort((a, b) => {
+        const aRevenuePerUnit = a.finalQty > 0 ? a.expectedRecoveredRevenue / a.finalQty : 0;
+        const bRevenuePerUnit = b.finalQty > 0 ? b.expectedRecoveredRevenue / b.finalQty : 0;
+        const marginDelta = a.grossMarginPct - b.grossMarginPct;
+        if (marginDelta !== 0) return marginDelta;
+        return aRevenuePerUnit - bRevenuePerUnit;
+      });
+
+    return {
+      kpi_definitions: {
+        OOS: "Out of Stock risk: percentage of active store-SKU rows projected to stock out or fall below critical cover.",
+        "Lost Sales Risk": "Revenue expected to be missed because demand cannot be served with available stock.",
+        GMROI: "Gross Margin Return on Inventory Investment: projected gross margin divided by average inventory cost.",
+        "Days Cover": "Estimated days of demand that current available stock can cover.",
+        "DC Free Stock": "Distribution center stock available for new replenishment after reservations.",
+        "Recovered Revenue": "Revenue expected to be protected by the planned replenishment."
+      },
+      active_scenario: activeScenario || "No scenario run",
+      current_state_kpis: currentKpis,
+      simulation_kpis: simulationKpis,
+      scenario_comparison: scenarioComparison.map((scenario) => ({
+        name: scenario.name,
+        replenishmentUnits: scenario.replenishmentUnits,
+        inventoryValue: scenario.inventoryValue,
+        lostSalesValue: scenario.lostSalesValue,
+        recoveredRevenue: scenario.recoveredRevenue,
+        recoveredMargin: scenario.recoveredMargin,
+        oosPercent: scenario.oosPercent,
+        constraintViolations: scenario.constraintViolations
+      })),
+      risk_summary: riskSummary,
+      top_reasons_this_run: topReasons(rows),
+      selected_filters: filters,
+      visible_table_count: sortedFilteredRows.length,
+      approval_summary: {
+        selected_rows: selectedRows.length,
+        selected_units: selectedRows.reduce((sum, row) => sum + row.finalQty, 0),
+        valid_visible_rows: validVisibleRows.length,
+        valid_visible_units: validVisibleRows.reduce((sum, row) => sum + row.finalQty, 0),
+        visible_rows_with_final_qty: approvalRows.length,
+        visible_rows_blocked_for_approval: approvalRows.filter((row) => isApprovalBlocked(row)).length
+      },
+      data_issue_summary: {
+        issue_records: dataIssues.length,
+        blocker_issue_records: dataIssues.filter((issue) => issue.blocksApproval || issue.severity.toLowerCase() === "blocker").length,
+        warning_issue_records: dataIssues.filter((issue) => !issue.blocksApproval && issue.severity.toLowerCase() !== "blocker").length,
+        rows_with_data_issue: rows.filter((row) => row.dataIssue).length
+      },
+      manual_override_summary: {
+        manual_override_rows: manualRows.length,
+        manual_override_rows_missing_comment: manualRows.filter((row) => !row.comment.trim()).length,
+        system_units_on_manual_rows: manualRows.reduce((sum, row) => sum + row.systemRecommendedQty, 0),
+        final_units_on_manual_rows: manualRows.reduce((sum, row) => sum + row.finalQty, 0),
+        unit_delta_on_manual_rows: manualRows.reduce((sum, row) => sum + row.finalQty - row.systemRecommendedQty, 0)
+      },
+      selected_row: selectedContextRow ? compactRow(selectedContextRow) : null,
+      uncovered_qty_drivers: uncoveredDriverSummary(rows, activeScenario || "No scenario run"),
+      top_uncovered_high_risk_rows: rows
+        .filter((row) => row.riskLevel === "High" && uncoveredQty(row) > 0)
+        .sort((a, b) => uncoveredQty(b) - uncoveredQty(a) || b.revenueAtRisk - a.revenueAtRisk)
+        .slice(0, 50)
+        .map(compactRow),
+      top_uncovered_rows: rows
+        .filter((row) => uncoveredQty(row) > 0)
+        .sort((a, b) => uncoveredQty(b) - uncoveredQty(a) || b.revenueAtRisk - a.revenueAtRisk)
+        .slice(0, 50)
+        .map(compactRow),
+      top_impact_rows: [...rows]
+        .sort((a, b) => (b.expectedRecoveredRevenue || b.revenueAtRisk) - (a.expectedRecoveredRevenue || a.revenueAtRisk))
+        .slice(0, 50)
+        .map(compactRow),
+      low_value_replenishment_rows: lowValueRows
+        .slice(0, 50)
+        .map(compactRow),
+      gmroi_proxy_rows: gmroiProxyRows
+        .slice(0, 50)
+        .map(compactRow)
+    };
+  }, [
+    activeScenario,
+    currentKpis,
+    dataIssues,
+    drawerRow,
+    explanationRow,
+    filteredRows,
+    filters,
+    rows,
+    scenarioComparison,
+    selectedRows,
+    simulationKpis,
+    sortedFilteredRows.length,
+    validVisibleRows
+  ]);
 
   function exportCurrentTable() {
     exportRowsToCsv(sortedFilteredRows, activeScenario);
@@ -612,7 +825,7 @@ export default function FlowstockApp() {
     <main className="premium-shell min-h-screen bg-cockpit-bg text-cockpit-text">
       <AppHeader runDate={runDate} packagePath={packagePath} loading={loading} onRefresh={refresh} />
       <div className="lg:flex">
-        <Sidebar activeView={activeView} onChange={setActiveView} onExport={exportCurrentTable} />
+        <Sidebar activeView={activeView} onChange={setActiveView} onExport={exportCurrentTable} onOpenAi={() => setAiOpen(true)} />
         <div className="mx-auto min-w-0 max-w-[1780px] flex-1 space-y-8 p-8">
           {message ? (
             <div className="glass-panel rounded-2xl px-5 py-4 text-sm text-cockpit-muted">{message}</div>
@@ -718,6 +931,7 @@ export default function FlowstockApp() {
       </div>
 
       <RowExplanationDrawer row={drawerRow} onClose={() => setDrawerRow(null)} />
+      <FlowstockAIModal open={aiOpen} onClose={() => setAiOpen(false)} context={aiContext} />
       {explanationRow ? (
         <RowRiskExplanationCard row={explanationRow} activeScenario={activeScenario} onClose={() => setExplanationRow(null)} />
       ) : null}

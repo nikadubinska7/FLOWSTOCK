@@ -1,6 +1,16 @@
-import { AlertTriangle, FileDown, History, LayoutDashboard, PanelsTopLeft } from "lucide-react";
+import { AlertTriangle, Bot, FileDown, History, LayoutDashboard, PanelsTopLeft } from "lucide-react";
 
-export function Sidebar({ activeView, onChange, onExport }: { activeView: string; onChange: (view: string) => void; onExport: () => void }) {
+export function Sidebar({
+  activeView,
+  onChange,
+  onExport,
+  onOpenAi
+}: {
+  activeView: string;
+  onChange: (view: string) => void;
+  onExport: () => void;
+  onOpenAi: () => void;
+}) {
   const items = [
     { id: "workspace", label: "Workspace", icon: <LayoutDashboard size={18} /> },
     { id: "issues", label: "Data Issues", icon: <AlertTriangle size={18} /> },
@@ -9,8 +19,8 @@ export function Sidebar({ activeView, onChange, onExport }: { activeView: string
   ];
 
   return (
-    <nav className="border-b border-white/10 bg-[#061022]/70 px-5 py-3 backdrop-blur-xl lg:min-h-[calc(100vh-109px)] lg:w-64 lg:border-b-0 lg:border-r lg:py-6">
-      <div className="flex gap-2 overflow-x-auto lg:flex-col">
+    <nav className="sticky top-0 z-20 border-b border-white/10 bg-[#061022]/70 px-5 py-3 backdrop-blur-xl lg:min-h-[calc(100vh-109px)] lg:w-64 lg:border-b-0 lg:border-r lg:top-[109px] lg:py-6">
+      <div className="flex gap-2 overflow-x-auto lg:flex-col lg:min-h-[calc(100vh-157px)]">
         {items.map((item) => (
           <button
             key={item.id}
@@ -23,6 +33,14 @@ export function Sidebar({ activeView, onChange, onExport }: { activeView: string
             {item.label}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={onOpenAi}
+          className="flex min-h-12 shrink-0 items-center gap-3 rounded-2xl border border-cyan-300/20 bg-cyan-400/10 px-4 py-3 text-sm font-semibold text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.08)] transition hover:border-cyan-200/40 hover:bg-cyan-400/16 lg:mt-auto"
+        >
+          <Bot size={18} />
+          Flowstock AI
+        </button>
         <button
           type="button"
           onClick={onExport}

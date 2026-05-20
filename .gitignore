@@ -7,3 +7,5 @@ coverage
 .env
 data/runs/*
 !data/runs/.gitkeep
+.env.local
+.env*.local

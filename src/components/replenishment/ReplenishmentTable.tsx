@@ -130,9 +130,6 @@ export function ReplenishmentTable({
               <p className="mt-3 text-xs text-cockpit-muted">{visibleColumnCount} columns visible</p>
             </div>
           ) : null}
-          <span className="rounded-full border border-red-400/25 bg-red-400/10 px-3 py-1 text-xs font-semibold text-red-200">High risk</span>
-          <span className="rounded-full border border-cockpit-line bg-cockpit-panel2 px-3 py-1 text-xs font-semibold text-cockpit-muted">System rec.</span>
-          <span className="rounded-full border border-cockpit-line bg-cockpit-panel2 px-3 py-1 text-xs font-semibold text-cockpit-muted">Manual edits</span>
         </div>
       </div>
       <div className="max-h-[720px] overflow-auto">
