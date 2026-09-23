@@ -1,0 +1,671 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Flowstock local orchestration API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:3000/api/v1"
+    }
+  ],
+  "security": [
+    {
+      "bearer": []
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "GET /health",
+        "responses": {
+          "200": {
+            "description": "Success; see n8n integration contract"
+          },
+          "400": {
+            "description": "Invalid payload or failed gate"
+          },
+          "401": {
+            "description": "Authentication/administrator access required"
+          },
+          "409": {
+            "description": "Conflict or busy; see error code"
+          }
+        },
+        "security": []
+      }
+    },
+    "/runs": {
+      "get": {
+        "summary": "GET /runs",
+        "responses": {
+          "200": {
+            "description": "Success; see n8n integration contract"
+          },
+          "400": {
+            "description": "Invalid payload or failed gate"
+          },
+          "401": {
+            "description": "Authentication/administrator access required"
+          },
+          "409": {
+            "description": "Conflict or busy; see error code"
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /runs",
+        "responses": {
+          "200": {
+            "description": "Success; see n8n integration contract"
+          },
+          "400": {
+            "description": "Invalid payload or failed gate"
+          },
+          "401": {
+            "description": "Authentication/administrator access required"
+          },
+          "409": {
+            "description": "Conflict or busy; see error code"
+          },
+          "202": {
+            "description": "Recommendation accepted; poll run ID. Pipeline jobs currently return 200 with running state."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartRun"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/runs/{id}": {
+      "get": {
+        "summary": "GET /runs/{id}",
+        "responses": {
+          "200": {
+            "description": "Success; see n8n integration contract"
+          },
+          "400": {
+            "description": "Invalid payload or failed gate"
+          },
+          "401": {
+            "description": "Authentication/administrator access required"
+          },
+          "409": {
+            "description": "Conflict or busy; see error code"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 100
+            }
+          }
+        ]
+      }
+    },
+    "/runs/{id}/override": {
+      "post": {
+        "summary": "POST /runs/{id}/override",
+        "responses": {
+          "200": {
+            "description": "Success; see n8n integration contract"
+          },
+          "400": {
+            "description": "Invalid payload or failed gate"
+          },
+          "401": {
+            "description": "Authentication/administrator access required"
+          },
+          "409": {
+            "description": "Conflict or busy; see error code"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Override"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/runs/{id}/decision": {
+      "post": {
+        "summary": "POST /runs/{id}/decision",
+        "responses": {
+          "200": {
+            "description": "Success; see n8n integration contract"
+          },
+          "400": {
+            "description": "Invalid payload or failed gate"
+          },
+          "401": {
+            "description": "Authentication/administrator access required"
+          },
+          "409": {
+            "description": "Conflict or busy; see error code"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Decision"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/runs/{id}/shipping": {
+      "get": {
+        "summary": "GET /runs/{id}/shipping",
+        "responses": {
+          "200": {
+            "description": "Success; see n8n integration contract"
+          },
+          "400": {
+            "description": "Invalid payload or failed gate"
+          },
+          "401": {
+            "description": "Authentication/administrator access required"
+          },
+          "409": {
+            "description": "Conflict or busy; see error code"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/models": {
+      "get": {
+        "summary": "GET /models",
+        "responses": {
+          "200": {
+            "description": "Success; see n8n integration contract"
+          },
+          "400": {
+            "description": "Invalid payload or failed gate"
+          },
+          "401": {
+            "description": "Authentication/administrator access required"
+          },
+          "409": {
+            "description": "Conflict or busy; see error code"
+          }
+        }
+      }
+    },
+    "/models/{id}": {
+      "get": {
+        "summary": "GET /models/{id}",
+        "responses": {
+          "200": {
+            "description": "Success; see n8n integration contract"
+          },
+          "400": {
+            "description": "Invalid payload or failed gate"
+          },
+          "401": {
+            "description": "Authentication/administrator access required"
+          },
+          "409": {
+            "description": "Conflict or busy; see error code"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "post": {
+        "summary": "POST /models/{id}",
+        "responses": {
+          "200": {
+            "description": "Success; see n8n integration contract"
+          },
+          "400": {
+            "description": "Invalid payload or failed gate"
+          },
+          "401": {
+            "description": "Authentication/administrator access required"
+          },
+          "409": {
+            "description": "Conflict or busy; see error code"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelAction"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/training": {
+      "post": {
+        "summary": "POST /training",
+        "responses": {
+          "200": {
+            "description": "Success; see n8n integration contract"
+          },
+          "400": {
+            "description": "Invalid payload or failed gate"
+          },
+          "401": {
+            "description": "Authentication/administrator access required"
+          },
+          "409": {
+            "description": "Conflict or busy; see error code"
+          },
+          "202": {
+            "description": "Recommendation accepted; poll run ID. Pipeline jobs currently return 200 with running state."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Job"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/ingest": {
+      "post": {
+        "summary": "POST /ingest",
+        "responses": {
+          "200": {
+            "description": "Success; see n8n integration contract"
+          },
+          "400": {
+            "description": "Invalid payload or failed gate"
+          },
+          "401": {
+            "description": "Authentication/administrator access required"
+          },
+          "409": {
+            "description": "Conflict or busy; see error code"
+          },
+          "202": {
+            "description": "Recommendation accepted; poll run ID. Pipeline jobs currently return 200 with running state."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Job"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/jobs/{id}": {
+      "get": {
+        "summary": "GET /jobs/{id}",
+        "responses": {
+          "200": {
+            "description": "Success; see n8n integration contract"
+          },
+          "400": {
+            "description": "Invalid payload or failed gate"
+          },
+          "401": {
+            "description": "Authentication/administrator access required"
+          },
+          "409": {
+            "description": "Conflict or busy; see error code"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/validate": {
+      "post": {
+        "summary": "POST /validate",
+        "responses": {
+          "200": {
+            "description": "Success; see n8n integration contract"
+          },
+          "400": {
+            "description": "Invalid payload or failed gate"
+          },
+          "401": {
+            "description": "Authentication/administrator access required"
+          },
+          "409": {
+            "description": "Conflict or busy; see error code"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartRun"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/monitor": {
+      "post": {
+        "summary": "POST /monitor",
+        "responses": {
+          "200": {
+            "description": "Success; see n8n integration contract"
+          },
+          "400": {
+            "description": "Invalid payload or failed gate"
+          },
+          "401": {
+            "description": "Authentication/administrator access required"
+          },
+          "409": {
+            "description": "Conflict or busy; see error code"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Monitor"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "StartRun": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "snapshot": {
+            "type": "string",
+            "description": "sportswear (original sportswear), latest (latest planning day), demo (legacy grocery fixture), or completed grocery model-version package ID"
+          }
+        },
+        "required": [
+          "snapshot"
+        ]
+      },
+      "Override": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "revision",
+          "edits"
+        ],
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "edits": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "finalQty",
+                "comment"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "finalQty": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "comment": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                }
+              }
+            }
+          }
+        }
+      },
+      "Decision": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "row_ids",
+          "create_shipping",
+          "reason"
+        ],
+        "properties": {
+          "action": {
+            "enum": [
+              "approve",
+              "reject"
+            ]
+          },
+          "row_ids": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "create_shipping": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "ModelAction": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "reason"
+        ],
+        "properties": {
+          "action": {
+            "enum": [
+              "approve",
+              "reject",
+              "activate",
+              "rollback"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "Job": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source"
+        ],
+        "properties": {
+          "source": {
+            "enum": [
+              "offline",
+              "smoke",
+              "freshretailnet"
+            ]
+          }
+        }
+      },
+      "Monitor": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "outcome_batch": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]{1,100}$"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "correlation_id": {
+            "type": "string"
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

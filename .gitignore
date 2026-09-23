@@ -1,6 +1,7 @@
 .DS_Store
 node_modules
 .next
+.next-*/
 out
 dist
 coverage
@@ -9,3 +10,15 @@ data/runs/*
 !data/runs/.gitkeep
 .env.local
 .env*.local
+
+.venv/
+__pycache__/
+*.pyc
+*.tsbuildinfo
+data/local/
+models/local/
+.flowstock/
+.cache/
+
+playwright-report/
+test-results/

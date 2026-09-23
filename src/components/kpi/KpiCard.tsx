@@ -1,5 +1,16 @@
-import { AlertTriangle, BadgeEuro, CheckCircle2, CircleDollarSign, Gauge, PackageCheck, Shield, Warehouse } from "lucide-react";
+"use client";
+
+import { AlertTriangle, BadgeEuro, CheckCircle2, CircleDollarSign, Gauge, Info, PackageCheck, Shield, Warehouse } from "lucide-react";
+import { useState } from "react";
 import { DeltaBadge } from "@/components/kpi/DeltaBadge";
+
+export type KpiExplanation = {
+  name: string;
+  meaning: string;
+  formula: string;
+  basis: string;
+  interpretation: string;
+};
 
 function RevenueProtectionIcon() {
   return (
@@ -25,20 +36,43 @@ export function KpiCard({
   value,
   detail,
   delta,
-  inverse
+  deltaValue = 0,
+  inverse,
+  explanation
 }: {
   label: string;
   value: string;
   detail?: string;
   delta?: string;
+  deltaValue?: number;
   inverse?: boolean;
+  explanation?: KpiExplanation;
 }) {
   const icon = iconForLabel(label);
+  const [open, setOpen] = useState(false);
   return (
-    <div className="group min-h-[154px] rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.075] to-white/[0.025] p-5 shadow-cockpit transition duration-200 hover:-translate-y-0.5 hover:border-blue-300/25 hover:bg-blue-400/[0.055]">
+    <div
+      className="group relative min-h-[154px] rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.075] to-white/[0.025] p-5 shadow-cockpit transition duration-200 hover:-translate-y-0.5 hover:border-blue-300/25 hover:bg-blue-400/[0.055]"
+      onMouseLeave={() => setOpen(false)}
+    >
       <div className="mb-5 flex items-start justify-between gap-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-cockpit-muted">{label}</p>
-        {delta ? <DeltaBadge value={delta} inverse={inverse} /> : null}
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-cockpit-muted">{label}</p>
+          {explanation ? (
+            <button
+              type="button"
+              onClick={() => setOpen((current) => !current)}
+              onMouseEnter={() => setOpen(true)}
+              onFocus={() => setOpen(true)}
+              onBlur={() => setOpen(false)}
+              className="rounded-full text-cockpit-muted transition hover:text-cyan-100 focus:outline-none focus:ring-2 focus:ring-cyan-300/40"
+              aria-label={`Explain ${label}`}
+            >
+              <Info size={14} />
+            </button>
+          ) : null}
+        </div>
+        {delta ? <DeltaBadge value={delta} change={deltaValue} inverse={inverse} /> : null}
       </div>
       <div className="flex items-end justify-between gap-4">
         <div>
@@ -47,6 +81,17 @@ export function KpiCard({
         </div>
         <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ring-1 ${icon.className}`}>{icon.icon}</div>
       </div>
+      {explanation ? (
+        <div
+          className={`${open ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0 group-hover:opacity-100"} absolute bottom-[calc(100%-0.75rem)] left-4 right-4 z-30 rounded-2xl border border-cyan-200/20 bg-[#071224]/95 p-4 text-xs leading-5 text-cockpit-muted shadow-[0_22px_60px_rgba(2,6,23,0.75),0_0_34px_rgba(34,211,238,0.12)] backdrop-blur-xl transition`}
+        >
+          <p className="mb-2 text-sm font-semibold text-cockpit-text">{explanation.name}</p>
+          <p>{explanation.meaning}</p>
+          <p className="mt-2"><span className="font-semibold text-cyan-100">Formula:</span> {explanation.formula}</p>
+          <p className="mt-2"><span className="font-semibold text-cyan-100">Basis:</span> {explanation.basis}</p>
+          <p className="mt-2"><span className="font-semibold text-cyan-100">Read it as:</span> {explanation.interpretation}</p>
+        </div>
+      ) : null}
     </div>
   );
 }

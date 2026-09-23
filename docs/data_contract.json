@@ -1,0 +1,997 @@
+{
+  "stores.csv": {
+    "store_id": {
+      "source_column": "store_id",
+      "transformation": "Preserve encoded source identifier as a string",
+      "type": "str",
+      "null_policy": "Required, non-null",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "source_store_id": {
+      "source_column": "store_id",
+      "transformation": "Preserve encoded source identifier as a string",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "source_city_id": {
+      "source_column": "city_id",
+      "transformation": "Preserve encoded source identifier as a string",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "store_name": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "route_id": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "delivery_day": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "receiving_capacity_units_per_delivery": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "synthetic operational quantities"
+    },
+    "active_flag": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "data_origin": {
+      "source_column": null,
+      "transformation": "Explicit provenance tag assigned from ingestion/generation stage",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "derived",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "provenance label"
+    },
+    "identifier_origin": {
+      "source_column": null,
+      "transformation": "Explicit provenance tag assigned from ingestion/generation stage",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "derived",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "provenance label"
+    }
+  },
+  "sku_master.csv": {
+    "sku_id": {
+      "source_column": "product_id",
+      "transformation": "Preserve encoded source identifier as a string",
+      "type": "str",
+      "null_policy": "Required, non-null",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "source_product_id": {
+      "source_column": "product_id",
+      "transformation": "Preserve encoded source identifier as a string",
+      "type": "str",
+      "null_policy": "Required, non-null",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "source_management_group_id": {
+      "source_column": "management_group_id",
+      "transformation": "Preserve encoded source identifier as a string",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "source_first_category_id": {
+      "source_column": "first_category_id",
+      "transformation": "Preserve encoded source identifier as a string",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "source_second_category_id": {
+      "source_column": "second_category_id",
+      "transformation": "Preserve encoded source identifier as a string",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "source_third_category_id": {
+      "source_column": "third_category_id",
+      "transformation": "Preserve encoded source identifier as a string",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "display_product_name": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "str",
+      "null_policy": "Required, non-null",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "display_department": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "display_category": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "display_subcategory": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "display_pack_description": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "display_unit_of_measure": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "category": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "subcategory": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "storage_temperature": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "shelf_life_days": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "calendar days"
+    },
+    "waste_risk": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "lifecycle_status": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "unit_cost": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "float",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "synthetic EUR"
+    },
+    "selling_price": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "float",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "synthetic EUR"
+    },
+    "gross_margin_pct": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "float",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "dimensionless ratio"
+    },
+    "pack_multiple": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "synthetic operational quantities"
+    },
+    "min_presentation_qty": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "synthetic operational quantities"
+    },
+    "replenishable_flag": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "display_metadata_origin": {
+      "source_column": null,
+      "transformation": "Explicit provenance tag assigned from ingestion/generation stage",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "derived",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "provenance label"
+    },
+    "commercial_origin": {
+      "source_column": null,
+      "transformation": "Explicit provenance tag assigned from ingestion/generation stage",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "derived",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "provenance label"
+    },
+    "operational_origin": {
+      "source_column": null,
+      "transformation": "Explicit provenance tag assigned from ingestion/generation stage",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "derived",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "provenance label"
+    }
+  },
+  "store_inventory.csv": {
+    "run_date": {
+      "source_column": "dt",
+      "transformation": "Day after source history or configured independent-fixture date",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "derived",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "ISO calendar date"
+    },
+    "store_id": {
+      "source_column": "store_id",
+      "transformation": "Preserve encoded source identifier as a string",
+      "type": "str",
+      "null_policy": "Required, non-null",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "sku_id": {
+      "source_column": "product_id",
+      "transformation": "Preserve encoded source identifier as a string",
+      "type": "str",
+      "null_policy": "Required, non-null",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "stock_on_hand": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Required, non-null",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "synthetic operational quantities"
+    },
+    "in_transit_qty": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "synthetic operational quantities"
+    },
+    "data_origin": {
+      "source_column": null,
+      "transformation": "Explicit provenance tag assigned from ingestion/generation stage",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "derived",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "provenance label"
+    },
+    "snapshot_timestamp": {
+      "source_column": "dt",
+      "transformation": "Day after source history or configured independent-fixture date",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "derived",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "ISO calendar date"
+    }
+  },
+  "assortment.csv": {
+    "store_id": {
+      "source_column": "store_id",
+      "transformation": "Preserve encoded source identifier as a string",
+      "type": "str",
+      "null_policy": "Required, non-null",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "sku_id": {
+      "source_column": "product_id",
+      "transformation": "Preserve encoded source identifier as a string",
+      "type": "str",
+      "null_policy": "Required, non-null",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "ranged_flag": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "target_cover_days": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "calendar days"
+    },
+    "min_cover_days": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "calendar days"
+    },
+    "max_cover_days": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "calendar days"
+    },
+    "store_sku_capacity_units": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "synthetic operational quantities"
+    },
+    "service_level_target": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "float",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "dimensionless ratio"
+    },
+    "store_sku_priority": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "dimensionless ratio"
+    },
+    "data_origin": {
+      "source_column": null,
+      "transformation": "Explicit provenance tag assigned from ingestion/generation stage",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "derived",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "provenance label"
+    }
+  },
+  "forecast_next_28d.csv": {
+    "store_id": {
+      "source_column": "store_id",
+      "transformation": "Preserve encoded source identifier as a string",
+      "type": "str",
+      "null_policy": "Required, non-null",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "sku_id": {
+      "source_column": "product_id",
+      "transformation": "Preserve encoded source identifier as a string",
+      "type": "str",
+      "null_policy": "Required, non-null",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "forecast_daily_sales_base": {
+      "source_column": "sale_amount",
+      "transformation": "Past-only forecast/baseline or calibrated range; multiply source-scale forecasts by scale10-v1 for operational quantities",
+      "type": "float",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "derived",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "synthetic operational quantities / diagnostic metadata"
+    },
+    "forecast_next_7_units": {
+      "source_column": "sale_amount",
+      "transformation": "Past-only forecast/baseline or calibrated range; multiply source-scale forecasts by scale10-v1 for operational quantities",
+      "type": "float",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "derived",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "synthetic operational quantities / diagnostic metadata"
+    },
+    "forecast_next_14_units": {
+      "source_column": "sale_amount",
+      "transformation": "Past-only forecast/baseline or calibrated range; multiply source-scale forecasts by scale10-v1 for operational quantities",
+      "type": "float",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "derived",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "synthetic operational quantities / diagnostic metadata"
+    },
+    "forecast_next_28_units": {
+      "source_column": "sale_amount",
+      "transformation": "Past-only forecast/baseline or calibrated range; multiply source-scale forecasts by scale10-v1 for operational quantities",
+      "type": "float",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "derived",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "synthetic operational quantities / diagnostic metadata"
+    },
+    "forecast_confidence": {
+      "source_column": "sale_amount",
+      "transformation": "Past-only forecast/baseline or calibrated range; multiply source-scale forecasts by scale10-v1 for operational quantities",
+      "type": "float",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "derived",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "dimensionless indicator"
+    },
+    "under_forecast_bias": {
+      "source_column": "sale_amount",
+      "transformation": "Past-only forecast/baseline or calibrated range; multiply source-scale forecasts by scale10-v1 for operational quantities",
+      "type": "int",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "derived",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "synthetic operational quantities / diagnostic metadata"
+    },
+    "seasonal_index": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "promo_uplift_pct": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "dimensionless ratio"
+    },
+    "promo_flag_next_28d": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "normalized_forecast_14": {
+      "source_column": "sale_amount",
+      "transformation": "Past-only forecast/baseline or calibrated range; multiply source-scale forecasts by scale10-v1 for operational quantities",
+      "type": "float",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "derived",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "normalized sales amount"
+    },
+    "quantity_origin": {
+      "source_column": null,
+      "transformation": "Explicit provenance tag assigned from ingestion/generation stage",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "derived",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "provenance label"
+    },
+    "conversion_version": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "conversion_factor": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "source_origin": {
+      "source_column": null,
+      "transformation": "Explicit provenance tag assigned from ingestion/generation stage",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "derived",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "provenance label"
+    }
+  },
+  "dc_inventory.csv": {
+    "sku_id": {
+      "source_column": "product_id",
+      "transformation": "Preserve encoded source identifier as a string",
+      "type": "str",
+      "null_policy": "Required, non-null",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "dc_total_stock": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "synthetic operational quantities"
+    },
+    "dc_reserved_stock": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "synthetic operational quantities"
+    },
+    "dc_blocked_stock": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "synthetic operational quantities"
+    },
+    "dc_safety_stock": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "synthetic operational quantities"
+    },
+    "dc_free_stock": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Required, non-null",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "synthetic operational quantities"
+    },
+    "data_origin": {
+      "source_column": null,
+      "transformation": "Explicit provenance tag assigned from ingestion/generation stage",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "derived",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "provenance label"
+    }
+  },
+  "capacity_rules.csv": {
+    "store_id": {
+      "source_column": "store_id",
+      "transformation": "Preserve encoded source identifier as a string",
+      "type": "str",
+      "null_policy": "Required, non-null",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "category": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "soft_capacity_units": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "synthetic operational quantities"
+    },
+    "hard_capacity_units": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "synthetic operational quantities"
+    },
+    "data_origin": {
+      "source_column": null,
+      "transformation": "Explicit provenance tag assigned from ingestion/generation stage",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "derived",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "provenance label"
+    }
+  },
+  "sales_history_28d.csv": {
+    "date": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "store_id": {
+      "source_column": "store_id",
+      "transformation": "Preserve encoded source identifier as a string",
+      "type": "str",
+      "null_policy": "Required, non-null",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "sku_id": {
+      "source_column": "product_id",
+      "transformation": "Preserve encoded source identifier as a string",
+      "type": "str",
+      "null_policy": "Required, non-null",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "sales_units": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "synthetic operational quantities"
+    },
+    "data_origin": {
+      "source_column": null,
+      "transformation": "Explicit provenance tag assigned from ingestion/generation stage",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "derived",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "provenance label"
+    }
+  },
+  "promo_calendar.csv": {},
+  "open_orders.csv": {},
+  "data_quality_issues.csv": {},
+  "approval_history.csv": {},
+  "manual_overrides.csv": {},
+  "simulation_state.csv": {
+    "run_date": {
+      "source_column": "dt",
+      "transformation": "Day after source history or configured independent-fixture date",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "derived",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "ISO calendar date"
+    },
+    "business_day_number": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "int",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "plan_id": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "domain": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "source_origin": {
+      "source_column": null,
+      "transformation": "Explicit provenance tag assigned from ingestion/generation stage",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "derived",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "provenance label"
+    },
+    "notes": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    }
+  },
+  "optimization_parameters.csv": {
+    "config_version": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "category/identifier/text"
+    },
+    "margin_weight": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "float",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "dimensionless ratio"
+    },
+    "service_weight": {
+      "source_column": null,
+      "transformation": "Seed-42 deterministic grocery.py generator; descriptive semantics are synthetic",
+      "type": "float",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "synthetic",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "dimensionless ratio"
+    },
+    "data_origin": {
+      "source_column": null,
+      "transformation": "Explicit provenance tag assigned from ingestion/generation stage",
+      "type": "str",
+      "null_policy": "Optional metadata may be empty; required numeric fields must be finite",
+      "data_origin": "derived",
+      "validation": "Unique entity keys and references; nonnegative numeric quantities; preserved source hierarchy; valid grocery display hierarchy",
+      "downstream_use": "Forecasting, allocation, diagnostics, approval or simulation according to entity",
+      "unit": "provenance label"
+    }
+  }
+}

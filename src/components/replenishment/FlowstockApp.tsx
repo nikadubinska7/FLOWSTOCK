@@ -2,13 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, FileText, MessageSquare, RefreshCw, SlidersHorizontal } from "lucide-react";
-import type { ApprovalResponse, Kpis, RefreshResponse, ScenarioKey, WorkingRow } from "@/lib/domain/types";
+import type { ApprovalResponse, Kpis, RefreshResponse, WorkingRow } from "@/lib/domain/types";
+import { compareRecoveredSales, zeroRecommendationReasons } from "@/lib/domain/recommendationReview";
 import { calculateKpis, recalculateRows } from "@/lib/domain/kpiCalculations";
-import { scenarioForKey } from "@/lib/domain/scenarioWeights";
+import { summarizePlan } from "@/lib/domain/plan";
+import { ModelHealth, type Health } from "./ModelHealth";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { KpiPanel } from "@/components/kpi/KpiPanel";
-import { ScenarioButtons } from "@/components/replenishment/ScenarioButtons";
+import { RecommendedPlan } from "./RecommendedPlan";
 import { TableFilters, type Filters } from "@/components/replenishment/TableFilters";
 import { ReplenishmentTable } from "@/components/replenishment/ReplenishmentTable";
 import { ApprovalBar } from "@/components/replenishment/ApprovalBar";
@@ -16,7 +18,7 @@ import { ApprovalModal } from "@/components/replenishment/ApprovalModal";
 import { ShippingDocsModal } from "@/components/replenishment/ShippingDocsModal";
 import { RowExplanationDrawer } from "@/components/replenishment/RowExplanationDrawer";
 import { DataIssuesPanel } from "@/components/data-issues/DataIssuesPanel";
-import { ScenarioComparison } from "@/components/scenario/ScenarioComparison";
+
 import { FlowstockAIModal, type FlowstockAIContext } from "@/components/ai/FlowstockAIModal";
 import { Card } from "@/components/common/Card";
 import { Badge } from "@/components/common/Badge";
@@ -66,7 +68,7 @@ function filterRows(rows: WorkingRow[], filters: Filters): WorkingRow[] {
     if (filters.finalPositive === "yes" && row.finalQty <= 0) return false;
     if (filters.finalPositive === "no" && row.finalQty > 0) return false;
     if (!search) return true;
-    return `${row.storeName} ${row.storeId} ${row.skuId} ${row.styleColorSize} ${row.reasonCode} ${row.constraintMessages.join(" ")}`
+    return `${row.storeName} ${row.storeId} ${row.skuId} ${row.productName} ${row.reasonCode} ${row.constraintMessages.join(" ")}`
       .toLowerCase()
       .includes(search);
   });
@@ -78,13 +80,13 @@ function csvValue(value: unknown): string {
   return text;
 }
 
-function exportRowsToCsv(rows: WorkingRow[], activeScenario: string) {
+function exportRowsToCsv(rows: WorkingRow[], activePlan: string) {
   const columns: Array<[string, (row: WorkingRow) => string | number]> = [
     ["Store ID", (row) => row.storeId],
     ["Store", (row) => row.storeName],
     ["Category", (row) => row.category],
     ["SKU", (row) => row.skuId],
-    ["Product", (row) => row.styleColorSize],
+    ["Product", (row) => row.productName],
     ["Product description", (row) => row.productDescription],
     ["System rec.", (row) => row.systemRecommendedQty],
     ["Final qty", (row) => row.finalQty],
@@ -122,9 +124,9 @@ function exportRowsToCsv(rows: WorkingRow[], activeScenario: string) {
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
-  const scenarioName = activeScenario ? activeScenario.toLowerCase().replaceAll(" ", "-") : "manual-plan";
+  const planName = activePlan ? activePlan.toLowerCase().replaceAll(" ", "-") : "manual-plan";
   anchor.href = url;
-  anchor.download = `flowstock-table-${scenarioName}-${new Date().toISOString().slice(0, 10)}.csv`;
+  anchor.download = `flowstock-table-${planName}-${new Date().toISOString().slice(0, 10)}.csv`;
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
@@ -161,25 +163,21 @@ function uncoveredQty(row: WorkingRow): number {
   return Math.max(0, row.requiredQty - row.finalQty);
 }
 
-function recommendationExplanation(row: WorkingRow, activeScenario: string): string {
+function recommendationExplanation(row: WorkingRow, activePlan: string): string {
   const riskWhy = row.riskLevel === "High"
     ? "This row is High risk because days cover is low, revenue at risk is high, or stockout is projected."
     : row.riskLevel === "Medium"
       ? "This row is Medium risk because cover, confidence, or DC availability needs attention."
       : "This row is Low risk because the current cover position is relatively healthy.";
-  if (row.constraintStatus === "Blocked") return `${riskWhy} Status is Blocked because the row has a blocker-level data issue or missing required data.`;
-  if (row.requiredQty <= 0) return `${riskWhy} Required Qty is the baseline need before scenario recommendation. It is 0 because available stock covers forecast demand.`;
-  if (row.systemRecommendedQty <= 0) {
-    if (row.reasonCode.includes("no DC free stock")) return `${riskWhy} Required Qty is the baseline need before scenario recommendation: ${whole(row.requiredQty)}. System recommended 0 because DC free stock for this SKU is 0 after higher-priority allocation.`;
-    if (row.reasonCode.includes("below Pack / MOQ")) return `${riskWhy} Required Qty is the baseline need before scenario recommendation: ${whole(row.requiredQty)}. System recommended 0 because remaining DC free stock is below the Pack / MOQ.`;
-    if (row.reasonCode.includes("no forecast demand")) return `${riskWhy} Required Qty is 0 because there is no forecast demand.`;
-    return `${riskWhy} Required Qty is the baseline need before scenario recommendation: ${whole(row.requiredQty)}. System recommended 0 because data quality or DC availability prevents a shipment.`;
-  }
-  if (row.systemRecommendedQty < row.requiredQty) return `${riskWhy} Required Qty is the baseline need before scenario recommendation: ${whole(row.requiredQty)}. System recommended ${whole(row.systemRecommendedQty)} because ${activeScenario || "the scenario"} partially covered the need using available DC stock and Pack / MOQ rules.`;
-  return `${riskWhy} Required Qty is the baseline need before scenario recommendation: ${whole(row.requiredQty)}. System recommended ${whole(row.systemRecommendedQty)} and all data checks passed.`;
+  if (!activePlan) return `${riskWhy} Generate a plan to see a recommendation.`;
+  if (row.constraintStatus === "Blocked") return `${riskWhy} Approval is blocked: ${row.constraintMessages.join("; ")}.`;
+  if (row.systemRecommendedQty <= 0) return `${riskWhy} System recommended 0. ${zeroRecommendationReasons(row).map(reason => reason.detail).join(" ")} High current risk does not override stock, pack or capacity limits.`;
+  if (row.systemRecommendedQty < row.requiredQty) return `${riskWhy} Required Qty is the baseline need before recommendation: ${whole(row.requiredQty)}. System recommended ${whole(row.systemRecommendedQty)} because ${activePlan || "the plan"} partially covered the need using available DC stock and Pack / MOQ rules.`;
+  return `${riskWhy} Required Qty is the baseline need before recommendation: ${whole(row.requiredQty)}. System recommended ${whole(row.systemRecommendedQty)} and all data checks passed.`;
 }
 
 function driverForRow(row: WorkingRow): string {
+  if (row.systemRecommendedQty === 0) return zeroRecommendationReasons(row)[0]?.label ?? "other";
   const reason = row.reasonCode.toLowerCase();
   if (row.constraintStatus === "Blocked") return "data blocked";
   if (reason.includes("no dc free stock")) return "no DC stock";
@@ -195,7 +193,7 @@ function compactRow(row: WorkingRow): Record<string, string | number | boolean> 
     store_id: row.storeId,
     store_name: row.storeName,
     sku_id: row.skuId,
-    product: row.styleColorSize,
+    product: row.productName,
     category: row.category,
     risk_level: row.riskLevel,
     status: row.constraintStatus,
@@ -238,26 +236,27 @@ function topReasons(rows: WorkingRow[]) {
     .map(([reason, count]) => ({ reason, count }));
 }
 
-function uncoveredDriver(row: WorkingRow, activeScenario: string): string {
+function uncoveredDriver(row: WorkingRow, activePlan: string): string {
+  if (row.systemRecommendedQty === 0 && activePlan && activePlan !== "No plan generated") return zeroRecommendationReasons(row).map(reason => reason.label).join("; ");
   const reason = row.reasonCode.toLowerCase();
   if (row.constraintStatus === "Blocked" || row.dataIssue) return "Data blocked or data issue";
   if (row.systemRecommendedQty === 0 && row.requiredQty > 0 && reason.includes("no dc free stock")) return "No DC free stock";
   if (row.systemRecommendedQty === 0 && row.requiredQty > 0 && reason.includes("below pack")) return "DC stock below Pack / MOQ";
   if (row.systemRecommendedQty > 0 && row.systemRecommendedQty < row.requiredQty && reason.includes("dc shortage")) return "Partial DC shortage allocation";
-  if (row.systemRecommendedQty > 0 && row.systemRecommendedQty < row.requiredQty && activeScenario.toLowerCase().includes("lean")) return "Lean scenario conservative target";
-  if (row.systemRecommendedQty > 0 && row.systemRecommendedQty < row.requiredQty) return "Scenario recommends partial coverage";
+  if (row.systemRecommendedQty > 0 && row.systemRecommendedQty < row.requiredQty && activePlan.toLowerCase().includes("lean")) return "Demand remains uncovered";
+  if (row.systemRecommendedQty > 0 && row.systemRecommendedQty < row.requiredQty) return "Plan recommends partial coverage";
   if (row.finalQty < row.systemRecommendedQty) return "Manual reduction";
   if (reason.includes("pack multiple")) return "Pack / MOQ rounding";
   if (row.requiredQty > 0 && row.finalQty === 0) return "No replenishment recommended";
   return "Other";
 }
 
-function uncoveredDriverSummary(rows: WorkingRow[], activeScenario: string) {
+function uncoveredDriverSummary(rows: WorkingRow[], activePlan: string) {
   const summary = new Map<string, { rows: number; uncoveredQty: number; revenueAtRisk: number; recoveredRevenue: number }>();
   for (const row of rows) {
     const uncovered = uncoveredQty(row);
     if (uncovered <= 0) continue;
-    const driver = uncoveredDriver(row, activeScenario);
+    const driver = uncoveredDriver(row, activePlan);
     const current = summary.get(driver) ?? { rows: 0, uncoveredQty: 0, revenueAtRisk: 0, recoveredRevenue: 0 };
     current.rows += 1;
     current.uncoveredQty += uncovered;
@@ -277,8 +276,8 @@ function uncoveredDriverSummary(rows: WorkingRow[], activeScenario: string) {
     .slice(0, 8);
 }
 
-function ScenarioSummary({ activeScenario, rows, onRiskGroupClick }: { activeScenario: string; rows: WorkingRow[]; onRiskGroupClick: (risk: RiskGroup) => void }) {
-  if (!activeScenario) return null;
+function PlanRiskSummary({ activePlan, rows, onRiskGroupClick }: { activePlan: string; rows: WorkingRow[]; onRiskGroupClick: (risk: RiskGroup) => void }) {
+  if (!activePlan) return null;
   const groups = (["High", "Medium", "Low"] as const).map((risk) => {
     const groupRows = rows.filter((row) => row.riskLevel === risk);
     return {
@@ -294,8 +293,8 @@ function ScenarioSummary({ activeScenario, rows, onRiskGroupClick }: { activeSce
     <section className="glass-panel rounded-3xl p-5">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cockpit-muted">Active scenario</p>
-          <h2 className="mt-1 text-lg font-semibold text-cockpit-text">{activeScenario}</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cockpit-muted">Recommended plan</p>
+          <h2 className="mt-1 text-lg font-semibold text-cockpit-text">{activePlan}</h2>
         </div>
         <div className="grid flex-1 grid-cols-1 gap-3 md:grid-cols-3 xl:max-w-5xl">
           {groups.map((group) => (
@@ -319,7 +318,7 @@ function ScenarioSummary({ activeScenario, rows, onRiskGroupClick }: { activeSce
   );
 }
 
-function RowRiskExplanationCard({ row, activeScenario, onClose }: { row: WorkingRow; activeScenario: string; onClose: () => void }) {
+function RowRiskExplanationCard({ row, activePlan, onClose }: { row: WorkingRow; activePlan: string; onClose: () => void }) {
   const metrics = [
     ["Status", row.constraintStatus],
     ["Required Qty", whole(row.requiredQty)],
@@ -332,7 +331,7 @@ function RowRiskExplanationCard({ row, activeScenario, onClose }: { row: Working
     ["Days cover", whole(row.daysOfCover)],
     ["Pack / MOQ", whole(row.packMultiple)],
     ["DC free stock", whole(row.dcFreeStock)],
-    ["Scenario", activeScenario || "No scenario run"]
+    ["Plan", activePlan || "No plan generated"]
   ];
 
   return (
@@ -342,7 +341,7 @@ function RowRiskExplanationCard({ row, activeScenario, onClose }: { row: Working
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-cockpit-muted">Risk explanation</p>
             <h2 className="mt-1 text-xl font-semibold text-cockpit-text">{row.riskLevel} risk · {row.storeName}</h2>
-            <p className="mt-1 text-sm text-cockpit-muted">{row.skuId} · {row.styleColorSize}</p>
+            <p className="mt-1 text-sm text-cockpit-muted">{row.skuId} · {row.productName}</p>
           </div>
           <button type="button" onClick={onClose} className="rounded-xl border border-white/10 bg-white/[0.045] px-3 py-2 text-sm text-cockpit-muted hover:text-cockpit-text">Close</button>
         </div>
@@ -355,7 +354,7 @@ function RowRiskExplanationCard({ row, activeScenario, onClose }: { row: Working
           ))}
         </div>
         <p className="mt-5 rounded-2xl border border-blue-300/15 bg-blue-400/8 p-4 text-sm leading-6 text-cockpit-muted">
-          {recommendationExplanation(row, activeScenario)}
+          {recommendationExplanation(row, activePlan)}
         </p>
       </div>
     </div>
@@ -374,7 +373,7 @@ function RiskGroupExplanationCard({ risk, rows, onClose }: { risk: RiskGroup; ro
     valid: groupRows.filter((row) => row.constraintStatus === "Valid").length,
     blocked: groupRows.filter((row) => row.constraintStatus === "Blocked").length
   };
-  const drivers = ["no DC stock", "partial DC shortage", "MOQ rounding", "not needed", "data blocked"] as const;
+  const drivers = Array.from(new Set(groupRows.map(driverForRow)));
   const driverRows = drivers.map((driver) => ({
     driver,
     qty: groupRows.filter((row) => driverForRow(row) === driver).reduce((sum, row) => sum + uncoveredQty(row), 0)
@@ -424,13 +423,13 @@ function SupportingPanels({
   rows,
   dataIssueCount,
   onApproveAll,
-  onRunOptimal,
+  onGeneratePlan,
   onOpenIssues
 }: {
   rows: WorkingRow[];
   dataIssueCount: number;
   onApproveAll: () => void;
-  onRunOptimal: () => void;
+  onGeneratePlan: () => void;
   onOpenIssues: () => void;
 }) {
   const reasonCounts = useMemo(() => {
@@ -447,7 +446,7 @@ function SupportingPanels({
 
   const actions = [
     { label: "Approve all", detail: `${safeRows} valid rows`, icon: <CheckCircle2 size={28} />, onClick: onApproveAll, color: "text-emerald-200 bg-emerald-400/12 ring-emerald-300/20" },
-    { label: "Apply optimal", detail: "System recommendation", icon: <RefreshCw size={28} />, onClick: onRunOptimal, color: "text-blue-200 bg-blue-400/12 ring-blue-300/20" },
+    { label: "Generate plan", detail: "System recommendation", icon: <RefreshCw size={28} />, onClick: onGeneratePlan, color: "text-blue-200 bg-blue-400/12 ring-blue-300/20" },
     { label: "Review issues", detail: `${dataIssueCount} open issues`, icon: <FileText size={28} />, onClick: onOpenIssues, color: "text-amber-200 bg-amber-400/12 ring-amber-300/20" },
     { label: "Add note", detail: "Use row comment", icon: <MessageSquare size={28} />, onClick: () => undefined, color: "text-cyan-200 bg-cyan-400/12 ring-cyan-300/20" }
   ];
@@ -513,15 +512,19 @@ function SupportingPanels({
 }
 
 export default function FlowstockApp() {
+  const [planId, setPlanId] = useState("");
+  const [revision, setRevision] = useState(0);
+  const [snapshot, setSnapshot] = useState("latest");
+  const [health, setHealth] = useState<Health | null>(null);
+  async function refreshHealth() { const r=await fetch("/api/v1/models"); if(r.ok)setHealth(await r.json()); }
   const [rows, setRows] = useState<WorkingRow[]>([]);
   const [currentKpis, setCurrentKpis] = useState<Kpis>(emptyKpis);
   const [simulationKpis, setSimulationKpis] = useState<Kpis>(emptyKpis);
-  const [scenarioComparison, setScenarioComparison] = useState<RefreshResponse["scenarioComparison"]>([]);
   const [dataIssues, setDataIssues] = useState<RefreshResponse["dataIssues"]>([]);
   const [runHistory, setRunHistory] = useState<RefreshResponse["runHistory"]>([]);
   const [runDate, setRunDate] = useState("");
   const [packagePath, setPackagePath] = useState("");
-  const [activeScenario, setActiveScenario] = useState("");
+  const [activePlan, setActivePlan] = useState("");
   const [activeView, setActiveView] = useState("workspace");
   const [filters, setFilters] = useState<Filters>(defaultFilters);
   const [impactSort, setImpactSort] = useState<"none" | "desc" | "asc">("none");
@@ -541,18 +544,24 @@ export default function FlowstockApp() {
     setLoading(true);
     setMessage("Loading latest CSV package...");
     try {
+      await fetch("/api/session", {method:"POST"});
+      void refreshHealth();
+      setPlanId("");
       const response = await fetch("/api/refresh", { cache: "no-store" });
       if (!response.ok) throw new Error("Refresh failed");
       const data = (await response.json()) as RefreshResponse;
       setRows(data.rows);
       setCurrentKpis(data.currentKpis);
       setSimulationKpis(data.simulationKpis);
-      setScenarioComparison(data.scenarioComparison);
       setDataIssues(data.dataIssues);
-      setRunHistory(data.runHistory);
+      const historyResponse=await fetch("/api/v1/runs");
+      if(historyResponse.ok){
+        const history=await historyResponse.json();
+        setRunHistory(history.runs.filter((r:{approval_state:string})=>r.approval_state === "approved").map((r:{runDate:string;plan_id:string;result:ApprovalResponse;snapshot:string})=>({runDate:r.runDate,scenario:r.plan_id,approvedRows:r.result.approvedRows,approvedUnits:r.result.approvedUnits,retailValue:r.result.totalRetailValue,costValue:r.result.totalCostValue,packagePath:r.snapshot})));
+      }else setRunHistory(data.runHistory);
       setRunDate(data.runDate);
       setPackagePath(data.packagePath);
-      setActiveScenario("");
+      setActivePlan("");
       setImpactSort("none");
       setFrozenOrderIds(null);
       setMessage(`Loaded ${data.rows.length.toLocaleString()} store-SKU rows.`);
@@ -569,13 +578,7 @@ export default function FlowstockApp() {
 
   const filteredRows = useMemo(() => filterRows(rows, filters), [rows, filters]);
   const sortedFilteredRows = useMemo(() => {
-    const baseRows = impactSort === "none" ? filteredRows : [...filteredRows].sort((a, b) => {
-      const riskDelta = tableRiskRank[b.riskLevel] - tableRiskRank[a.riskLevel];
-      if (riskDelta !== 0) return riskDelta;
-      const aImpact = a.expectedRecoveredRevenue || a.revenueAtRisk;
-      const bImpact = b.expectedRecoveredRevenue || b.revenueAtRisk;
-      return impactSort === "desc" ? bImpact - aImpact : aImpact - bImpact;
-    });
+    const baseRows = impactSort === "none" ? filteredRows : [...filteredRows].sort((a, b) => compareRecoveredSales(a, b, impactSort));
 
     if (!frozenOrderIds) return baseRows;
 
@@ -636,26 +639,17 @@ export default function FlowstockApp() {
 
     return {
       kpi_definitions: {
-        OOS: "Out of Stock risk: percentage of active store-SKU rows projected to stock out or fall below critical cover.",
+        OOS: "Out of Stock risk: demand-weighted percentage of forecast units projected to be unfulfilled in the next 14 days.",
         "Lost Sales Risk": "Revenue expected to be missed because demand cannot be served with available stock.",
         GMROI: "Gross Margin Return on Inventory Investment: projected gross margin divided by average inventory cost.",
         "Days Cover": "Estimated days of demand that current available stock can cover.",
         "DC Free Stock": "Distribution center stock available for new replenishment after reservations.",
         "Recovered Revenue": "Revenue expected to be protected by the planned replenishment."
       },
-      active_scenario: activeScenario || "No scenario run",
+      active_plan: activePlan || "No plan generated",
       current_state_kpis: currentKpis,
       simulation_kpis: simulationKpis,
-      scenario_comparison: scenarioComparison.map((scenario) => ({
-        name: scenario.name,
-        replenishmentUnits: scenario.replenishmentUnits,
-        inventoryValue: scenario.inventoryValue,
-        lostSalesValue: scenario.lostSalesValue,
-        recoveredRevenue: scenario.recoveredRevenue,
-        recoveredMargin: scenario.recoveredMargin,
-        oosPercent: scenario.oosPercent,
-        constraintViolations: scenario.constraintViolations
-      })),
+      forecast_comparison: rows.filter(r=>r.modelForecast !== undefined).slice(0,20).map(r=>({store_id:r.storeId,sku_id:r.skuId,baseline:r.baselineForecast ?? r.forecastNext14,ml:r.modelForecast!,applied:r.forecastNext14,model:r.modelVersion ?? "deterministic-v1",fallback:r.forecastFallback ? "yes" : "no"})),
       risk_summary: riskSummary,
       top_reasons_this_run: topReasons(rows),
       selected_filters: filters,
@@ -682,7 +676,7 @@ export default function FlowstockApp() {
         unit_delta_on_manual_rows: manualRows.reduce((sum, row) => sum + row.finalQty - row.systemRecommendedQty, 0)
       },
       selected_row: selectedContextRow ? compactRow(selectedContextRow) : null,
-      uncovered_qty_drivers: uncoveredDriverSummary(rows, activeScenario || "No scenario run"),
+      uncovered_qty_drivers: uncoveredDriverSummary(rows, activePlan || "No plan generated"),
       top_uncovered_high_risk_rows: rows
         .filter((row) => row.riskLevel === "High" && uncoveredQty(row) > 0)
         .sort((a, b) => uncoveredQty(b) - uncoveredQty(a) || b.revenueAtRisk - a.revenueAtRisk)
@@ -694,7 +688,7 @@ export default function FlowstockApp() {
         .slice(0, 50)
         .map(compactRow),
       top_impact_rows: [...rows]
-        .sort((a, b) => (b.expectedRecoveredRevenue || b.revenueAtRisk) - (a.expectedRecoveredRevenue || a.revenueAtRisk))
+        .sort((a, b) => compareRecoveredSales(a, b, "desc"))
         .slice(0, 50)
         .map(compactRow),
       low_value_replenishment_rows: lowValueRows
@@ -705,7 +699,7 @@ export default function FlowstockApp() {
         .map(compactRow)
     };
   }, [
-    activeScenario,
+    activePlan,
     currentKpis,
     dataIssues,
     drawerRow,
@@ -713,7 +707,6 @@ export default function FlowstockApp() {
     filteredRows,
     filters,
     rows,
-    scenarioComparison,
     selectedRows,
     simulationKpis,
     sortedFilteredRows.length,
@@ -721,32 +714,33 @@ export default function FlowstockApp() {
   ]);
 
   function exportCurrentTable() {
-    exportRowsToCsv(sortedFilteredRows, activeScenario);
+    exportRowsToCsv(sortedFilteredRows, activePlan);
     setMessage(`Exported ${sortedFilteredRows.length.toLocaleString()} filtered rows to CSV.`);
   }
 
-  async function runScenario(scenario: ScenarioKey) {
-    setLoading(true);
-    setMessage(`Running ${scenarioForKey(scenario).name}...`);
+  async function runPlan() {
+    setLoading(true);setMessage("Preparing forecast and recommended plan…");
     try {
-      const response = await fetch("/api/recommend", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scenario })
-      });
-      if (!response.ok) throw new Error("Recommendation failed");
-      const data = (await response.json()) as { rows: WorkingRow[]; simulationKpis: Kpis };
-      setRows(data.rows);
-      setSimulationKpis(data.simulationKpis);
-      setActiveScenario(scenarioForKey(scenario).name);
-      setImpactSort("desc");
-      setFrozenOrderIds(null);
-      setMessage(`${scenarioForKey(scenario).name} populated system and final quantities.`);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not run scenario.");
-    } finally {
-      setLoading(false);
-    }
+      const response=await fetch("/api/v1/runs",{method:"POST",headers:{"Content-Type":"application/json","Idempotency-Key":crypto.randomUUID()},body:JSON.stringify({snapshot})});
+      const job=await response.json();if(!response.ok)throw new Error(job.error?.message??"Run failed");
+      let data;
+      for(let attempt=0;attempt<120;attempt++) {
+        const r=await fetch(`/api/v1/runs/${job.id}?limit=1000`);data=await r.json();
+        if(!r.ok)throw new Error(data.error?.message??"Run failed");
+        if(data.status==="failed")throw new Error(data.error);
+        if(data.status==="ready")break;
+        await new Promise(resolve=>setTimeout(resolve,500));
+      }
+      if(data?.status!=="ready")throw new Error("Run still processing; check run status before retrying.");
+      const all:WorkingRow[]=[...data.rows];
+      for(let offset=1000;offset<data.total;offset+=1000){const r=await fetch(`/api/v1/runs/${job.id}?offset=${offset}&limit=1000`);if(!r.ok)throw new Error("Could not load all plan rows");all.push(...(await r.json()).rows);}
+      setRows(all);setPlanId(job.id);setRevision(data.revision);setRunDate(data.runDate);setPackagePath(snapshot);
+      setCurrentKpis(calculateKpis(all,false));setSimulationKpis(calculateKpis(all,true));setActivePlan("Recommended plan");setFrozenOrderIds(null);setImpactSort("desc");setMessage("Recommended plan ready. Review exceptions before approval.");
+    }catch(error){setMessage(error instanceof Error?error.message:"Run failed");}finally{setLoading(false);}
+  }
+  async function rejectPlan(){
+    const response=await fetch(`/api/v1/runs/${planId}/decision`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"reject",row_ids:[],create_shipping:false,reason:"Planner rejected plan"})});
+    if(response.ok){setPlanId("");setActivePlan("");setMessage("Plan rejected and recorded in the audit trail.");}else setMessage("Could not reject plan.");
   }
 
   function updateRows(mutator: (row: WorkingRow) => WorkingRow) {
@@ -798,18 +792,19 @@ export default function FlowstockApp() {
     setLoading(true);
     setMessage("Writing approval outputs and next-day CSV package...");
     try {
-      const response = await fetch("/api/approve", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          runDate,
-          scenario: activeScenario || "Manual Plan",
-          rows: pendingApproval.rows,
-          createShippingDocs
-        })
+      if(!planId)throw new Error("Generate a plan before approval.");
+      const edits=rows.filter(r=>r.manualOverride && pendingApproval.rows.some(p=>p.id===r.id)).map(r=>({id:r.id,finalQty:r.finalQty,comment:r.comment}));
+      if(edits.length){
+        const updated=await fetch(`/api/v1/runs/${planId}/override`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({edits,revision})});
+        const updateData=await updated.json();if(!updated.ok)throw new Error(updateData.error?.message??"Override failed");setRevision(updateData.revision);
+      }
+      const response = await fetch(`/api/v1/runs/${planId}/decision`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({action:"approve",row_ids:pendingApproval.rows.map(r=>r.id),create_shipping:createShippingDocs,reason:"Human planner confirmed replenishment"})
       });
-      if (!response.ok) throw new Error("Approval failed");
-      const result = (await response.json()) as ApprovalResponse;
+      const approved=await response.json();if(!response.ok)throw new Error(approved.error?.message??"Approval failed");
+      const result = approved.result as ApprovalResponse;
+      if(createShippingDocs){const anchor=document.createElement("a");anchor.href=`/api/v1/runs/${planId}/shipping`;anchor.download=`shipping-${planId}.csv`;anchor.click();}
       setLastApproval(result);
       setPendingApproval(null);
       setMessage(`Approved ${result.approvedRows} rows. Next Refresh will load the new package.`);
@@ -851,7 +846,7 @@ export default function FlowstockApp() {
             <>
               <KpiPanel title="Current State" current={currentKpis} simulation={simulationKpis} />
               <KpiPanel title="Simulation" current={currentKpis} simulation={simulationKpis} />
-              <ScenarioButtons activeScenario={activeScenario} loading={loading} onRun={runScenario} />
+              <RecommendedPlan loading={loading} onRun={runPlan} onReject={rejectPlan} summary={planId ? summarizePlan(rows) : null} active={Boolean(planId)} snapshot={snapshot} onSnapshot={setSnapshot} models={health?.models ?? []} />
               <TableFilters
                 filters={filters}
                 stores={stores}
@@ -861,8 +856,9 @@ export default function FlowstockApp() {
                   setFilters(nextFilters);
                 }}
               />
-              <ScenarioSummary activeScenario={activeScenario} rows={rows} onRiskGroupClick={setExplanationRiskGroup} />
+              <PlanRiskSummary activePlan={activePlan} rows={rows} onRiskGroupClick={setExplanationRiskGroup} />
               <ReplenishmentTable
+                planGenerated={Boolean(planId)}
                 rows={visibleRows}
                 totalRows={sortedFilteredRows.length}
                 impactSort={impactSort}
@@ -882,7 +878,7 @@ export default function FlowstockApp() {
                 rows={rows}
                 dataIssueCount={dataIssues.length}
                 onApproveAll={() => requestApproval("visible")}
-                onRunOptimal={() => runScenario("optimal")}
+                onGeneratePlan={runPlan}
                 onOpenIssues={() => setActiveView("issues")}
               />
               <ApprovalBar
@@ -895,7 +891,7 @@ export default function FlowstockApp() {
           ) : null}
 
           {activeView === "issues" ? <DataIssuesPanel issues={dataIssues} /> : null}
-          {activeView === "scenarios" ? <ScenarioComparison rows={scenarioComparison} /> : null}
+          {activeView === "models" ? <ModelHealth health={health} onRefresh={refreshHealth} /> : null}
           {activeView === "history" ? (
             <Card className="p-4">
               <h2 className="mb-4 text-base font-semibold">Run History</h2>
@@ -904,7 +900,7 @@ export default function FlowstockApp() {
                   <thead className="bg-cockpit-panel2 text-xs uppercase text-cockpit-muted">
                     <tr>
                       <th className="px-3 py-3">Run date</th>
-                      <th className="px-3 py-3">Scenario</th>
+                      <th className="px-3 py-3">Plan</th>
                       <th className="px-3 py-3 text-right">Rows</th>
                       <th className="px-3 py-3 text-right">Units</th>
                       <th className="px-3 py-3 text-right">Retail value</th>
@@ -930,10 +926,10 @@ export default function FlowstockApp() {
         </div>
       </div>
 
-      <RowExplanationDrawer row={drawerRow} onClose={() => setDrawerRow(null)} />
+      <RowExplanationDrawer planGenerated={Boolean(planId)} row={drawerRow} onClose={() => setDrawerRow(null)} />
       <FlowstockAIModal open={aiOpen} onClose={() => setAiOpen(false)} context={aiContext} />
       {explanationRow ? (
-        <RowRiskExplanationCard row={explanationRow} activeScenario={activeScenario} onClose={() => setExplanationRow(null)} />
+        <RowRiskExplanationCard row={explanationRow} activePlan={activePlan} onClose={() => setExplanationRow(null)} />
       ) : null}
       {explanationRiskGroup ? (
         <RiskGroupExplanationCard risk={explanationRiskGroup} rows={rows} onClose={() => setExplanationRiskGroup(null)} />

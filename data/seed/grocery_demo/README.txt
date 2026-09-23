@@ -1,0 +1,1 @@
+Grocery POC. Display catalogue and operations are synthetic. Source IDs remain encoded; generated names are not decoded identities. Normalized sales are not literal physical units. Commercial effects are simulated.

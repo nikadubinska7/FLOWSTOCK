@@ -1,0 +1,9 @@
+store_id,source_store_id,source_city_id,store_name,route_id,delivery_day,receiving_capacity_units_per_delivery,active_flag,data_origin,identifier_origin
+001,001,1,Store 001,R05,Wednesday,600,1,synthetic_operations,synthetic_fixture
+002,002,2,Store 002,R01,Monday,600,1,synthetic_operations,synthetic_fixture
+003,003,3,Store 003,R02,Friday,600,1,synthetic_operations,synthetic_fixture
+004,004,0,Store 004,R05,Tuesday,600,1,synthetic_operations,synthetic_fixture
+005,005,1,Store 005,R03,Monday,600,1,synthetic_operations,synthetic_fixture
+006,006,2,Store 006,R06,Monday,600,1,synthetic_operations,synthetic_fixture
+007,007,3,Store 007,R04,Thursday,600,1,synthetic_operations,synthetic_fixture
+008,008,0,Store 008,R03,Friday,600,1,synthetic_operations,synthetic_fixture

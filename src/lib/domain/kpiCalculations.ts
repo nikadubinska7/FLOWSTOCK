@@ -1,3 +1,4 @@
+import {shortage} from "./availability";
 import type { Kpis, WorkingRow } from "@/lib/domain/types";
 import { round, safeDivide } from "@/lib/utils/numbers";
 import { isApprovalBlocked, validateRows } from "@/lib/domain/constraints";
@@ -6,7 +7,7 @@ export function updateRowProjection(row: WorkingRow): WorkingRow {
   const projectedStock = row.stockOnHand + row.inTransitQty + row.finalQty;
   const projectedDays = row.averageDailySales > 0 ? projectedStock / row.averageDailySales : 999;
   const currentLostUnits = Math.max(0, row.forecastNext14 - row.stockOnHand - row.inTransitQty);
-  const projectedLostUnits = Math.max(0, row.forecastNext14 - projectedStock);
+  const projectedLostUnits = Math.max(0, currentLostUnits - Math.min(shortage(row), row.finalQty));
   const recoveredUnits = Math.max(0, currentLostUnits - projectedLostUnits);
 
   return {
@@ -36,7 +37,8 @@ export function calculateKpis(rows: WorkingRow[], useFinalQty: boolean): Kpis {
   let inventoryValue = 0;
   let stockUnits = 0;
   let demandUnits = 0;
-  let oosRows = 0;
+  let forecastDemandUnits = 0;
+  let unfulfilledDemandUnits = 0;
   let lostSalesValue = 0;
   let marginAtRisk = 0;
   let recoveredRevenue = 0;
@@ -50,13 +52,14 @@ export function calculateKpis(rows: WorkingRow[], useFinalQty: boolean): Kpis {
   for (const row of rows) {
     const finalQty = useFinalQty ? row.finalQty : 0;
     const stock = row.stockOnHand + row.inTransitQty + finalQty;
-    const projectedLostUnits = Math.max(0, row.forecastNext14 - stock);
     const currentLostUnits = Math.max(0, row.forecastNext14 - row.stockOnHand - row.inTransitQty);
+    const projectedLostUnits = Math.max(0, currentLostUnits - Math.min(shortage(row), finalQty));
 
     inventoryValue += stock * row.unitCost;
     stockUnits += stock;
     demandUnits += row.averageDailySales;
-    if (stock <= 0 || (row.averageDailySales > 0 && stock / row.averageDailySales <= row.daysToDelivery)) oosRows += 1;
+    forecastDemandUnits += row.forecastNext14;
+    unfulfilledDemandUnits += projectedLostUnits;
     lostSalesValue += projectedLostUnits * row.sellingPrice;
     marginAtRisk += projectedLostUnits * row.sellingPrice * row.grossMarginPct;
     recoveredRevenue += Math.max(0, currentLostUnits - projectedLostUnits) * row.sellingPrice;
@@ -72,7 +75,7 @@ export function calculateKpis(rows: WorkingRow[], useFinalQty: boolean): Kpis {
   return {
     inventoryValue: round(inventoryValue, 0),
     daysOfCover: round(safeDivide(stockUnits, demandUnits), 1),
-    oosPercent: round(safeDivide(oosRows, rows.length) * 100, 1),
+    oosPercent: round(safeDivide(unfulfilledDemandUnits, forecastDemandUnits) * 100, 1),
     lostSalesValue: round(lostSalesValue, 0),
     marginAtRisk: round(marginAtRisk, 0),
     recoveredRevenue: round(recoveredRevenue, 0),

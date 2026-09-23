@@ -14,7 +14,7 @@ export function Sidebar({
   const items = [
     { id: "workspace", label: "Workspace", icon: <LayoutDashboard size={18} /> },
     { id: "issues", label: "Data Issues", icon: <AlertTriangle size={18} /> },
-    { id: "scenarios", label: "Scenarios", icon: <PanelsTopLeft size={18} /> },
+    { id: "models", label: "Model health", icon: <PanelsTopLeft size={18} /> },
     { id: "history", label: "Run History", icon: <History size={18} /> }
   ];
 

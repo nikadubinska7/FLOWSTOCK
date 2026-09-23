@@ -32,7 +32,7 @@ export function AppHeader({
             Data synced {runDate || "Loading"}
           </div>
           <div className="max-w-xl truncate rounded-full border border-white/10 bg-white/[0.045] px-4 py-2 text-sm text-cockpit-muted">
-            {packagePath || "No package loaded"}
+            {packagePath.includes("replenishment_mock_csv_package") || packagePath.includes("sportswear-capacity-v1") || packagePath === "sportswear" ? "Sportswear · 70 stores · 1,200 SKUs" : packagePath.includes("grocery_demo") || packagePath === "demo" ? "Offline grocery snapshot" : packagePath.includes("sportswear_runs") || packagePath.includes("grocery_runs") || packagePath === "latest" ? "Latest planning day" : packagePath.startsWith("model-") ? "Prepared demand snapshot" : "No snapshot loaded"}
           </div>
           <Button variant="primary" onClick={onRefresh} disabled={loading}>
             <RefreshCw size={17} className={loading ? "animate-spin" : ""} />

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { authenticate } from "@/lib/server/auth";
 
 export const dynamic = "force-dynamic";
 
 const systemPrompt =
-  "You are Flowstock AI, a replenishment planning copilot. Behave like a real conversational assistant, not a static summary generator. Answer using only the provided Flowstock context, prior chat messages, and calculation results. Answer the user's actual question directly. Use prior chat messages for follow-up questions. Do not default to a dashboard summary unless asked. Be precise with business actions: say 'set Final Qty to 0', 'exclude from approval', or 'do not send in this run' instead of vague terms like 'remove rows'. Do not invent numbers. If a number is not available, say so, but do not say that when the context or app-side calculation already contains relevant totals, drivers, or rows. You may reason, explain, analyze, compare, visualize, and recommend planner actions, but you cannot approve, edit quantities, create shipping documents, modify CSV files, or change scenarios.";
+  "You are Flowstock AI, a retail replenishment planning copilot. The default dataset is the original mock sportswear network: 70 stores and 1,200 style-color-size SKUs. There is exactly one recommended plan, never three scenario options. Use the supplied row provenance to distinguish sportswear mock data from optional grocery research snapshots. Sportswear quantities are mock unit counts; only FreshRetailNet research quantities are converted from normalized sales. All commercial outcomes are simulated. Do not describe sportswear forecasts as trained on FreshRetailNet. Behave like a real conversational assistant, not a static summary generator. Answer using only the provided Flowstock context, prior chat messages, and calculation results. Answer the user's actual question directly. Use prior chat messages for follow-up questions. Do not default to a dashboard summary unless asked. Be precise with business actions: say 'set Final Qty to 0', 'exclude from approval', or 'do not send in this run' instead of vague terms like 'remove rows'. Do not invent numbers. If a number is not available, say so, but do not say that when the context or app-side calculation already contains relevant totals, drivers, or rows. You may reason, explain, analyze, compare, visualize, and recommend planner actions, but you cannot approve, edit quantities, create shipping documents, modify CSV files, or change scenarios.";
 
 type ChatMessage = {
   role: "user" | "assistant";
@@ -185,7 +186,7 @@ function scenarioSummary(context: ContextRecord): string {
     return `${risk}: ${whole(group.final_qty)} / ${whole(group.baseline_required_qty)} units, ${money(group.recovered_revenue)} / ${money(group.baseline_revenue_at_risk)} revenue recovered, ${whole(netUncovered(group))} net units uncovered.`;
   });
   return [
-    `Active scenario: ${text(context.active_scenario) || "No scenario run"}.`,
+    `Recommended plan: ${text(context.active_plan) || "No plan generated"}.`,
     `Visible filtered rows: ${whole(context.visible_table_count)}.`,
     `Current vs Simulation: lost sales ${money(current.lostSalesValue)} -> ${money(simulation.lostSalesValue)}, OOS ${pct(current.oosPercent)} -> ${pct(simulation.oosPercent)}, DC free stock ${whole(current.dcFreeStock)} -> ${whole(simulation.dcFreeStock)}, replenishment units ${whole(simulation.replenishmentUnits)}.`,
     ...groups,
@@ -261,7 +262,7 @@ function uncoveredQuantityExplanation(context: ContextRecord): AiAnswer {
   const finalQty = groups.reduce((sum, group) => sum + num(group.final_qty), 0);
   const uncovered = Math.max(0, required - finalQty);
   const rowLevelUncovered = groups.reduce((sum, group) => sum + num(group.uncovered_qty), 0);
-  const scenario = text(context.active_scenario) || "the active scenario";
+  const scenario = text(context.active_plan) || "the recommended plan";
   const current = asRecord(context.current_state_kpis);
   const simulation = asRecord(context.simulation_kpis);
   const groupLines = ["High", "Medium", "Low"].map((risk, index) => {
@@ -277,7 +278,7 @@ function uncoveredQuantityExplanation(context: ContextRecord): AiAnswer {
 
   const scenarioReason = scenario.toLowerCase().includes("lean")
     ? "Lean Replenishment is intentionally conservative: it protects minimum availability, but it does not try to fully cover every baseline required unit."
-    : "The active scenario is still constrained by its scenario target, Pack / MOQ rounding, and available DC stock allocation.";
+    : "The recommended plan is still constrained by its scenario target, Pack / MOQ rounding, and available DC stock allocation.";
 
   return {
     answer: [
@@ -401,8 +402,9 @@ function kpiDictionary(question: string, context: ContextRecord): AiAnswer | nul
     oos: {
       answer: [
         "OOS means Out of Stock.",
-        `In Flowstock, OOS Risk is the percentage of active store-SKU rows projected to run out of stock or sit below critical cover in the planning horizon.`,
-        `The app estimates it from row-level days cover, forecast demand, and stock position. Current OOS Risk is ${pct(current.oosPercent)}; Simulation OOS Risk is ${pct(simulation.oosPercent)}.`
+        "In Flowstock, OOS Risk is the percentage of forecast demand units projected to be unfulfilled within the planning horizon.",
+        "Formula: sum(unfulfilled forecast units) / sum(total forecast demand units) x 100. Flowstock uses forecast next 14 days, the same horizon used for Lost Sales Risk.",
+        `This is demand-weighted, so high-demand store-SKU rows have more impact than low-demand rows. Current OOS Risk is ${pct(current.oosPercent)}; Simulation OOS Risk is ${pct(simulation.oosPercent)}.`
       ].join("\n")
     },
     "lost sales risk": {
@@ -826,7 +828,7 @@ function approvalSummaryDraft(context: ContextRecord): string {
     `Approve ${whole(approval.valid_visible_rows)} valid visible replenishment rows for ${whole(approval.valid_visible_units)} units.`,
     `Expected impact: ${money(simulation.recoveredRevenue)} recovered revenue, ${money(simulation.recoveredMargin)} recovered margin, and projected lost sales risk of ${money(simulation.lostSalesValue)}.`,
     `Rows blocked or excluded from visible approval: ${whole(approval.visible_rows_blocked_for_approval)}.`,
-    `Recommended note: approval is based on the active ${text(context.active_scenario) || "manual"} plan and should exclude rows with unresolved validation issues.`
+    `Recommended note: approval is based on the active ${text(context.active_plan) || "manual"} plan and should exclude rows with unresolved validation issues.`
   ].join("\n");
 }
 
@@ -834,6 +836,11 @@ function localAnswer(question: string, rawContext: unknown): AiAnswer {
   const context = asRecord(rawContext);
   const normalized = question.toLowerCase();
   if (!Object.keys(context).length) return { answer: notEnoughData };
+  if (/lean|optimal recommendation|compare scenarios|lost sales recovery/.test(normalized)) return {answer:"Flowstock produces one recommended plan balancing margin and service with hard stock constraints. Use row forecast evidence to compare ML and deterministic forecasts; there are no allocation scenarios to choose."};
+  if (/compare.*(forecast|model|baseline|ml)|baseline.*ml/.test(normalized)) {
+    const comparisons = asRows(context.forecast_comparison);
+    return {answer: comparisons.length ? "These are the baseline, ML and applied forecasts for the sampled store-product rows. A candidate forecast is diagnostic until human approval and activation. Quantities are synthetic operational units; forecasts are not observed demand." : "No ML forecasts are available in this snapshot. The deterministic baseline is active.", visualization: comparisons.length ? {type:"comparison_table",title:"Forecast diagnostics (sample)",data:comparisons as Array<Record<string,string|number>>} : undefined};
+  }
   const whatIfAnswer = localWhatIf(question, context);
   if (whatIfAnswer) return whatIfAnswer;
   const dictionaryAnswer = kpiDictionary(question, context);
@@ -863,20 +870,14 @@ function setupMessage() {
 export async function GET() {
   const apiKey = process.env.OPENAI_API_KEY;
   return NextResponse.json({
-    setupRequired: !apiKey || apiKey === "your_api_key_here",
-    message: !apiKey || apiKey === "your_api_key_here" ? setupMessage() : ""
+    setupRequired: false,
+    message: !apiKey ? "Deterministic explanations active; conversational model is optional." : ""
   });
 }
 
 export async function POST(request: NextRequest) {
+  try { await authenticate(request); } catch { return NextResponse.json({error:"AUTH_REQUIRED"},{status:401}); }
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey || apiKey === "your_api_key_here") {
-    return NextResponse.json({
-      setupRequired: true,
-      message: setupMessage()
-    });
-  }
-
   const body = (await request.json()) as { messages?: ChatMessage[]; context?: unknown };
   const messages = body.messages ?? [];
   const latestUserMessage = [...messages].reverse().find((message) => message.role === "user")?.content;
@@ -889,6 +890,8 @@ export async function POST(request: NextRequest) {
   const deterministicAnswer = intent === "follow_up_clarification"
     ? followUpClarification(latestUserMessage, messages, context)
     : localAnswer(latestUserMessage, context);
+
+  if (!apiKey || apiKey === "your_api_key_here") return NextResponse.json({...deterministicAnswer, mode:"deterministic_fallback"});
 
   const chatTranscript = messages
     .map((message) => `${message.role === "user" ? "Planner" : "Flowstock AI"}: ${message.content}`)

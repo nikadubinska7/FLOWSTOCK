@@ -17,10 +17,10 @@ export type AIVisualization = {
 
 export type FlowstockAIContext = {
   kpi_definitions: Record<string, string>;
-  active_scenario: string;
+  active_plan: string;
   current_state_kpis: Record<string, number>;
   simulation_kpis: Record<string, number>;
-  scenario_comparison: Array<Record<string, string | number>>;
+  forecast_comparison: Array<Record<string, string | number>>;
   risk_summary: Array<Record<string, string | number>>;
   top_reasons_this_run: Array<Record<string, string | number>>;
   selected_filters: Record<string, string>;
@@ -50,7 +50,7 @@ const quickPrompts = [
   "How can I improve OOS?",
   "What is the 3-month projected GMROI?",
   "What if I approve only High-risk rows?",
-  "Compare Lean, Optimal, and Lost Sales Recovery"
+  "Explain the recommended plan"
 ];
 
 function contextLabel(value: string) {
@@ -153,7 +153,7 @@ export function FlowstockAIModal({
 
   const contextChips = useMemo(() => {
     return [
-      ["Scenario", contextLabel(context.active_scenario)],
+      ["Scenario", contextLabel(context.active_plan)],
       ["Filtered rows", context.visible_table_count.toLocaleString("en-US")],
       ["Risk filter", contextLabel(context.selected_filters.risk)],
       ["Selected row", context.selected_row ? `${context.selected_row.store_id} · ${context.selected_row.sku_id}` : "None"]

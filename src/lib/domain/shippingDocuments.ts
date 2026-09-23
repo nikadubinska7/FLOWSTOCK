@@ -4,7 +4,7 @@ import type { CsvRecord, WorkingRow } from "@/lib/domain/types";
 import { deliveryDate } from "@/lib/utils/dates";
 import { round } from "@/lib/utils/numbers";
 
-export async function createShippingDocuments(outputDir: string, approvalId: string, runDate: string, rows: WorkingRow[]): Promise<number> {
+export async function createShippingDocuments(outputDir: string, approvalId: string, runDate: string, rows: WorkingRow[], planId = ""): Promise<number> {
   const docs = new Map<string, CsvRecord[]>();
 
   for (const row of rows) {
@@ -14,12 +14,17 @@ export async function createShippingDocuments(outputDir: string, approvalId: str
     list.push({
       shipping_doc_id: docId,
       approval_id: approvalId,
+      plan_id: planId,
+      currency: "EUR",
+      display_metadata_origin: row.displayMetadataOrigin ?? "synthetic_grocery_overlay",
+      quantity_origin: row.quantityOrigin ?? "synthetic_operational_conversion",
+      commercial_origin: "synthetic",
       route_id: row.routeId,
       delivery_date: date,
       store_id: row.storeId,
       store_name: row.storeName,
       sku_id: row.skuId,
-      style_color_size: row.styleColorSize,
+      display_product_name: row.productName,
       category: row.category,
       approved_qty: String(row.finalQty),
       pack_multiple: String(row.packMultiple),

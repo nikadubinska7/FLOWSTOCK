@@ -1,0 +1,2 @@
+shipping_doc_id,approval_id,plan_id,currency,display_metadata_origin,quantity_origin,commercial_origin,route_id,delivery_date,store_id,store_name,sku_id,display_product_name,category,approved_qty,pack_multiple,unit_cost,selling_price,total_cost_value,total_retail_value
+APR-2026-05-15-1790102067130_R03_2026-05-18_005,APR-2026-05-15-1790102067130,1adf38e6-210e-4560-8644-47309b22362c,EUR,synthetic_grocery_overlay,synthetic_operational_conversion,synthetic,R03,2026-05-18,005,Store 005,1,Pears 500g · 1,Fresh Produce,6,6,5.41,8.12,32.46,48.72

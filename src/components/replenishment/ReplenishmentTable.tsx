@@ -4,6 +4,7 @@ import type { WorkingRow } from "@/lib/domain/types";
 import { money, whole } from "@/lib/utils/formatters";
 import { ConstraintBadge, RiskBadge } from "@/components/replenishment/RowStatusBadge";
 import { QuantityEditor } from "@/components/replenishment/QuantityEditor";
+import { zeroRecommendationReasons } from "@/lib/domain/recommendationReview";
 
 function coverPill(days: number) {
   if (days <= 2) return "bg-red-500/18 text-red-200";
@@ -13,6 +14,7 @@ function coverPill(days: number) {
 
 export function ReplenishmentTable({
   rows,
+  planGenerated,
   totalRows,
   impactSort,
   onSelect,
@@ -25,6 +27,7 @@ export function ReplenishmentTable({
   onExport
 }: {
   rows: WorkingRow[];
+  planGenerated: boolean;
   totalRows: number;
   impactSort: "none" | "desc" | "asc";
   onSelect: (rowId: string, selected: boolean) => void;
@@ -88,6 +91,7 @@ export function ReplenishmentTable({
         <div>
           <h2 className="text-xl font-semibold text-cockpit-text">Review replenishment rows</h2>
           <p className="mt-1 text-sm text-cockpit-muted">Showing {rows.length} of {totalRows} matching rows. Narrow filters to inspect exceptions and approval candidates.</p>
+          <p className="mt-1 text-xs text-cockpit-muted">Current risk describes the position before this plan. A zero recommendation can reflect a stock or capacity limit; select its reason for details.</p>
         </div>
         <div className="relative flex flex-wrap items-center gap-2">
           <button
@@ -102,10 +106,10 @@ export function ReplenishmentTable({
             value={impactSort}
             onChange={(event) => onImpactSortChange(event.target.value as "none" | "desc" | "asc")}
             className="h-10 rounded-full border border-white/10 bg-white/[0.045] px-3 text-xs font-semibold text-cockpit-text outline-none transition focus:border-blue-300/55"
-            aria-label="Impact sort"
+            aria-label="Recovered sales sort"
           >
-            <option value="desc">Impact: High to Low</option>
-            <option value="asc">Impact: Low to High</option>
+            <option value="desc">Recovered sales: High to Low</option>
+            <option value="asc">Recovered sales: Low to High</option>
             <option value="none">Clear sort</option>
           </select>
           <button
@@ -143,7 +147,7 @@ export function ReplenishmentTable({
               {show("category") ? <th className="w-[82px] border-r table-grid px-3 py-4">Category</th> : null}
               {show("sku") ? <th className="w-[92px] border-r table-grid px-3 py-4">SKU</th> : null}
               {show("product") ? <th className="w-[142px] border-r table-grid px-3 py-4">Product</th> : null}
-              {show("systemRec") ? <th className="w-[82px] border-r table-grid px-3 py-4 text-right">System rec.</th> : null}
+              {show("systemRec") ? <th className="w-[138px] border-r table-grid px-3 py-4 text-right">System rec.</th> : null}
               {show("requiredQty") ? <th className="w-[86px] border-r table-grid px-3 py-4 text-right">Required qty</th> : null}
               {show("finalQty") ? <th className="w-[106px] border-r table-grid px-3 py-4 text-right text-cockpit-text">Final qty</th> : null}
               {show("stockOnHand") ? <th className="w-[82px] border-r table-grid px-3 py-4 text-right">Stock on hand</th> : null}
@@ -159,11 +163,11 @@ export function ReplenishmentTable({
               {show("dcFree") ? <th className="w-[90px] border-r table-grid px-3 py-4 text-right">DC free stock</th> : null}
               {show("revenueAtRisk") ? <th className="w-[92px] border-r table-grid px-3 py-4 text-right">Revenue at risk</th> : null}
               {show("marginAtRisk") ? <th className="w-[88px] border-r table-grid px-3 py-4 text-right">Margin at risk</th> : null}
-              {show("impact") ? <th className="w-[86px] border-r table-grid px-3 py-4 text-right">Impact</th> : null}
+              {show("impact") ? <th className="w-[110px] border-r table-grid px-3 py-4 text-right">Recovered sales</th> : null}
               {show("recoveredMargin") ? <th className="w-[96px] border-r table-grid px-3 py-4 text-right">Recovered margin</th> : null}
               {show("confidence") ? <th className="w-[86px] border-r table-grid px-3 py-4 text-right">Confidence</th> : null}
               {show("promo") ? <th className="w-[64px] border-r table-grid px-3 py-4">Promo</th> : null}
-              {show("risk") ? <th className="w-[104px] border-r table-grid px-3 py-4">Risk</th> : null}
+              {show("risk") ? <th className="w-[104px] border-r table-grid px-3 py-4">Current risk</th> : null}
               {show("reason") ? <th className="w-[150px] border-r table-grid px-3 py-4">Reason</th> : null}
               {show("constraint") ? <th className="w-[110px] border-r table-grid px-3 py-4">Status</th> : null}
               {show("comment") ? <th className="w-[156px] px-3 py-4">Comment</th> : null}
@@ -171,7 +175,7 @@ export function ReplenishmentTable({
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.id} className={`border-t table-grid transition hover:bg-blue-500/[0.075] ${row.selected ? "bg-blue-500/12 outline outline-1 -outline-offset-1 outline-blue-300/30" : "odd:bg-white/[0.012] even:bg-white/[0.026]"}`}>
+              <tr key={row.id} data-row-id={row.id} data-pack-multiple={row.packMultiple} className={`border-t table-grid transition hover:bg-blue-500/[0.075] ${row.selected ? "bg-blue-500/12 outline outline-1 -outline-offset-1 outline-blue-300/30" : "odd:bg-white/[0.012] even:bg-white/[0.026]"}`}>
                 {show("select") ? <td className="border-r table-grid px-3 py-4">
                   <input type="checkbox" checked={row.selected} onChange={(event) => onSelect(row.id, event.target.checked)} aria-label={`Select ${row.id}`} />
                 </td> : null}
@@ -183,8 +187,15 @@ export function ReplenishmentTable({
                 </td> : null}
                 {show("category") ? <td className="border-r table-grid px-3 py-4">{row.category}</td> : null}
                 {show("sku") ? <td className="border-r table-grid px-3 py-4 font-mono text-xs text-cockpit-muted">{row.skuId}</td> : null}
-                {show("product") ? <td className="border-r table-grid px-3 py-4 font-semibold text-cockpit-text">{row.styleColorSize}</td> : null}
-                {show("systemRec") ? <td className="border-r table-grid px-3 py-4 text-right font-semibold">{whole(row.systemRecommendedQty)}</td> : null}
+                {show("product") ? <td className="border-r table-grid px-3 py-4 font-semibold text-cockpit-text">{row.productName}</td> : null}
+                {show("systemRec") ? <td className="border-r table-grid px-3 py-4 text-right font-semibold">
+                  {whole(row.systemRecommendedQty)}
+                  {planGenerated && row.systemRecommendedQty === 0 ? (
+                    <button type="button" onClick={() => onOpenRow(row)} className="mt-1 block w-full text-right text-xs font-normal text-cockpit-muted underline decoration-dotted underline-offset-2 hover:text-cyan-100">
+                      {zeroRecommendationReasons(row)[0]?.label}
+                    </button>
+                  ) : null}
+                </td> : null}
                 {show("requiredQty") ? <td className="border-r table-grid px-3 py-4 text-right font-semibold text-cockpit-muted">{whole(row.requiredQty)}</td> : null}
                 {show("finalQty") ? <td className="border-r table-grid px-3 py-4 text-right">
                   <QuantityEditor value={row.finalQty} onCommit={(value) => onFinalQtyChange(row.id, value)} />
@@ -202,7 +213,10 @@ export function ReplenishmentTable({
                 {show("dcFree") ? <td className="border-r table-grid px-3 py-4 text-right">{whole(row.dcFreeStock)}</td> : null}
                 {show("revenueAtRisk") ? <td className="border-r table-grid px-3 py-4 text-right font-semibold">{money(row.revenueAtRisk)}</td> : null}
                 {show("marginAtRisk") ? <td className="border-r table-grid px-3 py-4 text-right">{money(row.marginAtRisk)}</td> : null}
-                {show("impact") ? <td className="border-r table-grid px-3 py-4 text-right font-semibold text-cockpit-green">{money(row.expectedRecoveredRevenue || row.revenueAtRisk)}</td> : null}
+                {show("impact") ? <td className="border-r table-grid px-3 py-4 text-right">
+                  <span data-recovered-sales={row.expectedRecoveredRevenue} className={`font-semibold ${row.expectedRecoveredRevenue > 0 ? "text-cockpit-green" : "text-cockpit-muted"}`}>{money(row.expectedRecoveredRevenue)}</span>
+                  <span className={`mt-1 block text-xs ${row.revenueAtRisk > 0 ? "text-amber-200" : "text-cockpit-muted"}`}>At risk: {money(row.revenueAtRisk)}</span>
+                </td> : null}
                 {show("recoveredMargin") ? <td className="border-r table-grid px-3 py-4 text-right text-cockpit-green">{money(row.expectedRecoveredMargin)}</td> : null}
                 {show("confidence") ? <td className="border-r table-grid px-3 py-4 text-right">{Math.round(row.forecastConfidence * 100)}%</td> : null}
                 {show("promo") ? <td className="border-r table-grid px-3 py-4">{row.promoFlag ? "Yes" : "No"}</td> : null}

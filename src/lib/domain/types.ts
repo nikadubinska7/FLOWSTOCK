@@ -1,4 +1,3 @@
-export type ScenarioKey = "inventory" | "lostSales" | "optimal";
 export type RiskLevel = "Low" | "Medium" | "High";
 export type ConstraintStatus = "Valid" | "Blocked";
 
@@ -27,7 +26,25 @@ export type WorkingRow = {
   deliveryDay: string;
   category: string;
   skuId: string;
-  styleColorSize: string;
+  productName: string;
+  forecastLower?: number;
+  forecastUpper?: number;
+  baselineForecast?: number;
+  modelForecast?: number;
+  modelVersion?: string;
+  forecastFallback?: boolean;
+  forecastEligible?: boolean;
+  forecastSignals?: string;
+  dataOrigin?: string;
+  displayMetadataOrigin?: string;
+  quantityOrigin?: string;
+  priorityScore?: number;
+  rankingScore?: number;
+  constraintAdjustments?: string[];
+  normalizedMarginContribution?: number;
+  normalizedServiceContribution?: number;
+  minShipment?: number;
+  maxShipment?: number;
   productDescription: string;
   baselineRequiredQty: number;
   baselineRevenueAtRisk: number;
@@ -58,6 +75,7 @@ export type WorkingRow = {
   reasonCode: string;
   constraintStatus: ConstraintStatus;
   constraintMessages: string[];
+  constraintWarnings?: string[];
   comment: string;
   manualOverride: boolean;
   dataIssue: boolean;
@@ -87,20 +105,8 @@ export type RefreshResponse = {
   rows: WorkingRow[];
   currentKpis: Kpis;
   simulationKpis: Kpis;
-  scenarioComparison: ScenarioComparisonRow[];
   dataIssues: DataIssueSummary[];
   runHistory: RunHistoryRow[];
-};
-
-export type ScenarioComparisonRow = {
-  name: string;
-  replenishmentUnits: number;
-  inventoryValue: number;
-  lostSalesValue: number;
-  recoveredRevenue: number;
-  recoveredMargin: number;
-  oosPercent: number;
-  constraintViolations: number;
 };
 
 export type DataIssueSummary = {
@@ -125,7 +131,7 @@ export type RunHistoryRow = {
 
 export type ApprovalRequest = {
   rows: WorkingRow[];
-  scenario: string;
+  planId: string;
   createShippingDocs: boolean;
 };
 
@@ -133,6 +139,8 @@ export type ApprovalResponse = {
   approvalId: string;
   approvedRows: number;
   approvedUnits: number;
+  totalRetailValue: number;
+  totalCostValue: number;
   blockedRowsExcluded: number;
   outputPath: string;
   nextPackagePath: string;

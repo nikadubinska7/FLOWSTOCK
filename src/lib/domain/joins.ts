@@ -1,4 +1,5 @@
 import path from "path";
+import {validatePackage} from "./dataValidation";
 import { readCsv } from "@/lib/csv/readCsv";
 import type { CsvRecord, DataIssueSummary, RunHistoryRow, WorkingRow } from "@/lib/domain/types";
 import { n, round } from "@/lib/utils/numbers";
@@ -54,6 +55,7 @@ export async function loadCsvPackage(packagePath: string): Promise<LoadedPackage
 
   const entries = await Promise.all(fileNames.map(async (name) => [name, await readCsv(path.join(packagePath, `${name}.csv`))] as const));
   const raw = Object.fromEntries(entries);
+  validatePackage(raw);
   const runDate = raw.simulation_state[0]?.run_date ?? raw.store_inventory[0]?.run_date ?? "2026-05-15";
 
   const stores = mapBy(raw.stores, ["store_id"]);
@@ -100,14 +102,27 @@ export async function loadCsvPackage(packagePath: string): Promise<LoadedPackage
     return {
       id: key(inventory.store_id, inventory.sku_id),
       selected: false,
+      rankingScore: forecast.ranking_score ? n(forecast.ranking_score) : undefined,
+      forecastLower: n(forecast.lower, 0),
+      forecastUpper: n(forecast.upper, forecastNext14 * 2),
+      baselineForecast: n(forecast.baseline, forecastNext14),
+      modelForecast: forecast.model_forecast ? n(forecast.model_forecast) : undefined,
+      modelVersion: forecast.model_version || "deterministic-v1",
+      forecastFallback: true,
+      forecastEligible: Boolean(forecast.model_forecast) && forecast.fallback?.toLowerCase() !== "true",
+      forecastSignals: forecast.signals || "Moving-average forecast; uncalibrated fallback range",
+      dataOrigin: forecast.source_origin || (sku.style_color_size ? "synthetic_sportswear_fixture" : "synthetic_fixture"),
+      displayMetadataOrigin: sku.display_metadata_origin || (sku.style_color_size ? "synthetic_sportswear_fixture" : "synthetic_grocery_overlay"),
+      quantityOrigin: forecast.quantity_origin || (sku.style_color_size ? "synthetic_unit_counts" : "synthetic_operational_conversion"),
+
       storeId: inventory.store_id,
       storeName: store.store_name ?? inventory.store_id,
       routeId: store.route_id ?? "R01",
       deliveryDay: store.delivery_day ?? "Monday",
       category: sku.category ?? "Unknown",
       skuId: inventory.sku_id,
-      styleColorSize: sku.style_color_size ?? inventory.sku_id,
-      productDescription: `${sku.subcategory ?? "Product"} ${sku.color ?? ""} ${sku.size ?? ""}`.trim(),
+      productName: sku.display_product_name || sku.style_color_size || inventory.sku_id,
+      productDescription: sku.display_product_name || [sku.subcategory, sku.style_color_size].filter(Boolean).join(" · ") || inventory.sku_id,
       baselineRequiredQty: baselineRequiredQty(baselineInput),
       baselineRevenueAtRisk,
       requiredQty: baselineRequiredQty(baselineInput),
@@ -129,7 +144,7 @@ export async function loadCsvPackage(packagePath: string): Promise<LoadedPackage
       marginAtRisk: round(currentLostUnits * sellingPrice * grossMarginPct, 2),
       expectedRecoveredRevenue: 0,
       expectedRecoveredMargin: 0,
-      forecastConfidence: n(forecast.forecast_confidence, 0.75),
+      forecastConfidence: n(forecast.quality, n(forecast.forecast_confidence, 0.5)),
       promoFlag: forecast.promo_flag_next_28d === "1" || n(forecast.promo_uplift_pct) > 0,
       promoUpliftPct: baselineInput.promoUpliftPct,
       seasonalIndex: baselineInput.seasonalIndex,
@@ -142,8 +157,8 @@ export async function loadCsvPackage(packagePath: string): Promise<LoadedPackage
       dataIssue: Boolean(issue),
       dataIssueSeverity: issue?.severity ?? "",
       dataIssueDescription: issue?.issue_description ?? "",
-      ranged: assortmentRow.ranged_flag !== "0",
-      replenishable: sku.replenishable_flag !== "0",
+      ranged: assortmentRow.ranged_flag === "1",
+      replenishable: sku.replenishable_flag === "1",
       storeSkuCapacityUnits: n(assortmentRow.store_sku_capacity_units, 999),
       softCategoryCapacityUnits: n(capacityRow.soft_capacity_units, 999999),
       hardCategoryCapacityUnits: n(capacityRow.hard_capacity_units, 999999),
@@ -179,7 +194,7 @@ export async function loadCsvPackage(packagePath: string): Promise<LoadedPackage
       })),
     runHistory: raw.simulation_state.map((row) => ({
       runDate: row.run_date,
-      scenario: row.last_approved_scenario || "Initial package",
+      scenario: row.plan_id || row.last_approved_scenario || "Initial package",
       approvedRows: n(row.approved_rows),
       approvedUnits: n(row.total_approved_units),
       retailValue: n(row.total_retail_value),

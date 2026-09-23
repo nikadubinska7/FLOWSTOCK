@@ -1,0 +1,1 @@
+{"version":"balanced-v1","margin_weight":0.5,"service_weight":0.5,"service_floor":0.9,"budget":null,"horizon_days":14,"tie_breaker":"store_id then sku_id lexical ascending"}

@@ -1,0 +1,16 @@
+file_name,rows,data_origin
+stores.csv,8,mixed_explicit_field_provenance
+sku_master.csv,36,mixed_explicit_field_provenance
+store_inventory.csv,288,mixed_explicit_field_provenance
+assortment.csv,288,mixed_explicit_field_provenance
+forecast_next_28d.csv,288,mixed_explicit_field_provenance
+dc_inventory.csv,36,mixed_explicit_field_provenance
+capacity_rules.csv,72,mixed_explicit_field_provenance
+sales_history_28d.csv,8064,synthetic_fixture
+promo_calendar.csv,0,mixed_explicit_field_provenance
+open_orders.csv,0,mixed_explicit_field_provenance
+data_quality_issues.csv,0,mixed_explicit_field_provenance
+approval_history.csv,0,mixed_explicit_field_provenance
+manual_overrides.csv,0,mixed_explicit_field_provenance
+simulation_state.csv,1,mixed_explicit_field_provenance
+optimization_parameters.csv,1,mixed_explicit_field_provenance

@@ -1,0 +1,7 @@
+node_modules
+.next
+.venv
+data
+models
+.flowstock
+package-lock.json

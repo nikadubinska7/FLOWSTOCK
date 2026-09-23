@@ -1,0 +1,28 @@
+{
+  "start_run": {
+    "snapshot": "demo"
+  },
+  "override": {
+    "revision": 0,
+    "edits": [
+      {
+        "id": "001|1",
+        "finalQty": 6,
+        "comment": "Planner checked local demand"
+      }
+    ]
+  },
+  "approval": {
+    "action": "approve",
+    "row_ids": [
+      "001|1"
+    ],
+    "create_shipping": true,
+    "reason": "Reviewed synthetic demo shipment"
+  },
+  "model_review": {
+    "action": "approve",
+    "reason": "Reviewed fixed numeric gates; this example is not an actual approval"
+  },
+  "monitoring_no_outcomes": {}
+}

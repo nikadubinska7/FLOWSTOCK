@@ -1,0 +1,2 @@
+import {defineConfig} from '@playwright/test';
+export default defineConfig({testDir:'tests/browser',workers:1,use:{baseURL:'http://127.0.0.1:3100',headless:true},webServer:{command:'npm run dev -- --port 3100',url:'http://127.0.0.1:3100',reuseExistingServer:false,timeout:120000,env:{FLOWSTOCK_DIST_DIR:".next-browser",FLOWSTOCK_STATE_DIR:`/private/tmp/flowstock-browser-state-${process.pid}`,FLOWSTOCK_RUNS_DIR:`/private/tmp/flowstock-browser-runs-${process.pid}`}}});
