@@ -4,11 +4,13 @@ import { Button } from "@/components/common/Button";
 export function AppHeader({
   runDate,
   packagePath,
+  sourceLabel,
   loading,
-  onRefresh
+  onRefresh,
 }: {
   runDate: string;
   packagePath: string;
+  sourceLabel: string;
   loading: boolean;
   onRefresh: () => void;
 }) {
@@ -19,10 +21,17 @@ export function AppHeader({
           <div className="flex items-center gap-3">
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-4xl font-semibold leading-tight text-cockpit-text">Flowstock</h1>
-                <span className="rounded-full border border-blue-300/20 bg-blue-400/10 px-2.5 py-1 text-[10px] font-bold uppercase text-blue-100">Plan</span>
+                <h1 className="text-4xl font-semibold leading-tight text-cockpit-text">
+                  Flowstock
+                </h1>
+                <span className="rounded-full border border-blue-300/20 bg-blue-400/10 px-2.5 py-1 text-[10px] font-bold uppercase text-blue-100">
+                  Plan
+                </span>
               </div>
-              <p className="mt-2 text-base text-cockpit-muted">Make fast, high-impact replenishment decisions across stores, SKUs, and DC stock.</p>
+              <p className="mt-2 text-base text-cockpit-muted">
+                Make fast, high-impact replenishment decisions across stores,
+                SKUs, and DC stock.
+              </p>
             </div>
           </div>
         </div>
@@ -32,7 +41,7 @@ export function AppHeader({
             Data synced {runDate || "Loading"}
           </div>
           <div className="max-w-xl truncate rounded-full border border-white/10 bg-white/[0.045] px-4 py-2 text-sm text-cockpit-muted">
-            {packagePath.includes("replenishment_mock_csv_package") || packagePath.includes("sportswear-capacity-v1") || packagePath === "sportswear" ? "Sportswear · 70 stores · 1,200 SKUs" : packagePath.includes("grocery_demo") || packagePath === "demo" ? "Offline grocery snapshot" : packagePath.includes("sportswear_runs") || packagePath.includes("grocery_runs") || packagePath === "latest" ? "Latest planning day" : packagePath.startsWith("model-") ? "Prepared demand snapshot" : "No snapshot loaded"}
+            {packagePath ? `${sourceLabel} · ${packagePath}` : sourceLabel}
           </div>
           <Button variant="primary" onClick={onRefresh} disabled={loading}>
             <RefreshCw size={17} className={loading ? "animate-spin" : ""} />
@@ -41,7 +50,10 @@ export function AppHeader({
           <div className="flex h-11 w-11 items-center justify-center rounded-full border border-cockpit-line bg-cockpit-panel2 text-sm font-bold">
             <Sparkles size={17} className="text-cockpit-accent2" />
           </div>
-          <ChevronDown size={17} className="hidden text-cockpit-muted sm:block" />
+          <ChevronDown
+            size={17}
+            className="hidden text-cockpit-muted sm:block"
+          />
         </div>
       </div>
     </header>

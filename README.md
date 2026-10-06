@@ -2,7 +2,7 @@
 
 Flowstock is a working, local web prototype for planning DC-to-store replenishment across a sportswear store network. A planner generates **one recommended plan**, reviews its expected commercial impact, edits quantities, approves shipments and advances to the next simulated day.
 
-**Current status — 24 September 2026:** the sportswear workflow works end to end. Recommendations use transparent deterministic allocation and the supplied mock forecasts. Optional grocery forecasting research, model governance and integration APIs are implemented, but no trained model is active for sportswear. This is an AI Consultancy Bootcamp proof of concept, not a production inventory system.
+**Current status — 6 October 2026:** the sportswear workflow works end to end. Recommendations use transparent deterministic allocation and the supplied mock forecasts. A separate Databricks study now includes frozen baselines, Spark ML, Elastic Net, AdaBoost and PyTorch experiments, but no candidate has met the sportswear promotion target. Optional grocery forecasting research, model governance and integration APIs are also implemented. This is an AI Consultancy Bootcamp proof of concept, not a production inventory system.
 
 ## 1. Run locally
 
@@ -47,7 +47,15 @@ The default network has:
 - Daily planning, weekly store delivery days, fixed assortments and DC-to-store transfers.
 - Mock inventory, demand, prices, margins, capacity rules, open orders and data issues supplied as CSVs.
 
-The snapshot selector offers:
+Flowstock now separates the **data source** from the **snapshot**. Each source owns its latest package, generated planning days and run history, so switching sources cannot make one dataset appear as the latest package for another.
+
+| Data source | Current state |
+|---|---|
+| Sportswear CSV | Ready; full planning, approval, shipping and next-day loop. |
+| Microsoft Business Central | Read-only Production connection verified for CRONUS USA, Inc.; published location-level ledger fields were found, but warehouse activity is too sparse for direct store replenishment. |
+| Grocery research CSV | Ready as an optional research fixture, isolated from sportswear outputs. |
+
+The snapshot selector then offers snapshots belonging to the selected source:
 
 | Snapshot | Purpose |
 |---|---|
@@ -55,6 +63,8 @@ The snapshot selector offers:
 | Original sportswear · 70 stores · 1,200 SKUs | Starts from the initial sportswear data with the documented mock capacity corrections. |
 | Grocery demo · reference dataset | Small independent synthetic fixture: 8 stores × 36 products. |
 | Grocery research data · model version | Locally prepared historical research package, available after importing and training. |
+
+Planning API requests now carry both `source` and `snapshot`. Older snapshot-only clients remain supported and are assigned to their historical source automatically. Business Central cannot generate a plan until its API adapter has synchronized a validated local snapshot. See the [Business Central discovery report](docs/business_central_discovery.md).
 
 The original sportswear CSVs are preserved in `data/seed/replenishment_mock_csv_package`. Inventory, forecasts, costs, prices and product identities are not inflated to make recommendations look better.
 
@@ -194,9 +204,9 @@ Operational outputs, private state, downloaded research data and model artifacts
 
 Flowstock AI explains the supplied plan context, risks and calculations. A deterministic fallback works without credentials. Optional conversational responses use a configured API key and can send the supplied planning context to that provider. The copilot cannot approve shipments, edit quantities or promote models.
 
-For optional configuration, copy `.env.example` to `.env.local`, fill only the settings you need, and restart the app. `OPENAI_API_KEY` and `OPENAI_MODEL` control conversational responses. Keep `.env.local` private.
+For optional configuration, copy `.env.example` to `.env.local`, fill only the settings you need, and restart the app. `OPENAI_API_KEY` and `OPENAI_MODEL` control conversational responses. The server-only `BC_*` settings enable read-only Business Central connection testing and discovery; they do not create a planning snapshot or enable recommendations from Business Central. Keep `.env.local` private.
 
-### Forecasting research: separate from sportswear
+### Grocery forecasting research: separate from sportswear
 
 The implemented Python pipeline imports **FreshRetailNet-50K grocery data**, validates it, selects stores reproducibly and creates chronological train/validation/test splits. It compares seasonal and moving-average baselines with CPU gradient boosting, and trains a separate ranking challenger using a semi-synthetic margin proxy.
 
@@ -211,6 +221,48 @@ Latest recorded held-out evidence:
 The candidate underperforms both baselines and remains unpromoted. Proxy ranking NDCG@5 is approximately 0.9980 versus 0.9949 for its baseline; this measures a synthetic proxy, not actual allocation profit. Only 5,015 uncensored complete training examples remained after exclusions, a substantial limitation. See [evaluation results](docs/evaluation_results.json), [model card](docs/model_card.md) and [data card](docs/data_card_freshretailnet.md).
 
 **There is no validated sportswear ML model.** Sportswear planning uses the supplied mock forecasts. Grocery predictions apply only to a matching, explicitly approved model snapshot; the ranking challenger is diagnostic and does not drive the active allocation objective.
+
+### Sportswear forecasting research: Databricks Round 2
+
+This study is deliberately separate from the web application's committed seed data. The private synthetic-data generator, generated bundle, Databricks notebooks and model artifacts are not tracked in this repository. The public repository records the design, controls, results and decisions needed to reproduce and review the work without publishing the synthetic generator or large datasets.
+
+#### Dataset and evaluation boundary
+
+| Item | Recorded value |
+|---|---:|
+| Network | 1 DC, 70 stores, 720 SKUs |
+| Fixed assortment | 34,268 ranged store-SKU combinations |
+| Development period | 1 July 2024–30 June 2026 |
+| Daily development rows | 25,015,640 |
+| Sealed evaluation period | 1 July–28 September 2026 |
+| Sealed daily rows | 3,084,120 |
+| Databricks bundle | 171 files in 24 monthly partitions |
+| Raw Delta tables | 25 |
+
+The uploaded bundle passed file-count and SHA-256 checks. It excludes generator code, private truth fields and sealed actual outcomes. The 90-day sealed period remains unread and unscored. The April–June internal holdout was used for the frozen baseline and first GBT evaluation; later candidates are selected only on the development tuning split and must not be treated as final validation results.
+
+WAPE is `sum(abs(actual - forecast)) / sum(actual)`. Lower is better. Screens sometimes show `1 - WAPE` as an intuitive “forecast accuracy,” but that is only a presentation shorthand: it can be negative, it is sensitive to aggregation, and it is not a universal accuracy definition. The current minimum business target of 65% on that display is equivalent to **WAPE ≤ 0.35**; the preferred 70–80% range is **WAPE 0.30–0.20**.
+
+#### Experiment log
+
+| Step | Work completed | Result and decision |
+|---:|---|---|
+| 1–8 | Defined the synthetic sportswear blueprint, masters, operational history, validation rules and export bundle. | Built a checksum-validated, pre-backtest bundle with fixed assortment and a sealed future period. |
+| 9 | Uploaded and verified the V2 bundle in Databricks. | 171 files extracted; recorded ZIP SHA-256; no sealed outcomes opened. |
+| 10 | Loaded the raw bundle. | Created 25 Delta tables with 25,015,640 development rows. |
+| 11 | Built leakage-controlled daily demand features and the feature contract. | 25,015,640 feature rows; 22,572,215 eligible labelled rows; 519,242 censored targets; 69 feature columns; 55 approved inputs. |
+| 12 | Froze simple 28-day baselines and corrected the evaluation grain from daily diagnostics to the business horizon. | V1 was rejected as too weak: all-store WAPE 0.6455 and high-volume store-SKU WAPE 0.4959. V1 cleanup removed 35 tables and one bundle path while preserving the raw volume. |
+| 12B–12C | Rebuilt and evaluated V2 at store-SKU and network-SKU level. | Balanced blend all-store WAPE 0.5200; high-volume store-SKU WAPE 0.3979; high-volume network-SKU seasonal WAPE 0.0860. The top 20% comprised 144 SKUs, 43.3% of units, with a 1,280-unit trailing-180-day threshold. The large gap between network and store WAPE points to store allocation as the main problem. |
+| 13 | Created 28-day supervised examples. | 19 development origins; 1,850,472 examples; 1,332,201 model-eligible. Internal holdout: 102,804 examples, 74,575 complete. Approved inputs: 68. Sealed access: 0. |
+| 14 | Trained the first Spark GBT residual model. | Internal WAPE 0.4866 versus 0.5200 baseline: 6.4% relative improvement. High-volume store WAPE 0.3691; high-volume network WAPE worsened from 0.0998 to 0.1273. Passed the minimal non-regression check but missed the business target. |
+| 15 | Added hierarchical history features and removed planning-only capacity/replenishment fields from the demand model. | 1,953,276 output rows; 48,810 tuning examples, 48,791 eligible; 74,575 internal examples retained; 98.9% long-history coverage; 85 approved inputs; 8 planning-only fields excluded. |
+| 16 | Tuned a hierarchical residual/reconciliation model on the development tuning origin. | Selected residual weight 1.00 and reconciliation weight 0.50. Store WAPE 0.4599 and network WAPE 0.0982 versus 0.5005 history anchor: 8.1% relative tuning improvement. |
+| 17 | Screened AdaBoost and Elastic Net, as suggested by the teacher. | Elastic Net grid: three mixing values × two regularization values. Best was 0.50 / 0.010 with WAPE 0.4502, a 10.0% tuning improvement. Best AdaBoost was about 0.4803 on a deterministic 154,466-row sample. Neither met the target. |
+| 18 | Screened three PyTorch embedding residual MLPs on an NVIDIA A10G. | 1,185,804 training rows; 48,791 tuning rows; 24 categorical and 61 numeric inputs. Removing early stopping and running 40 epochs did not improve beyond approximately 0.433 WAPE. Later epochs flattened or worsened, so training duration is not the main bottleneck. |
+
+The three neural candidates were `256×128` (dropout 0.10, learning rate 0.001), `384×192×96` (dropout 0.15, learning rate 0.0007) and `256×256×128` (dropout 0.05, learning rate 0.0005). The best observed tuning WAPE of approximately 0.433 represents about 13.5% improvement over the 0.5005 history anchor, or about 56.7% on the `1 - WAPE` display. These development results are useful for diagnosis but are not final model evidence.
+
+No sportswear candidate has been promoted. The next experiment is an **attainability diagnostic**: hold network-SKU demand totals fixed, test whether lagged store shares can allocate them accurately, and compare those results with an oracle-total version used only as a lower-bound diagnostic. This separates errors in total SKU demand from errors in allocation across stores before more model tuning is attempted.
 
 ### Optional research commands
 
@@ -258,8 +310,9 @@ Local browser use obtains a same-origin planner session. Administrator mutations
 | Area | Current limit / next work |
 |---|---|
 | Real operational data | Replace mock CSVs with validated ERP/POS/WMS feeds and reconciled stock/order balances. |
+| Business Central synchronization | Connection testing and standard endpoint discovery are implemented. Complete sales/purchase line extraction, solve location-SKU inventory access, define missing planning defaults and materialize a validated Flowstock snapshot. |
 | Capacity assumptions | Validate store/SKU/category capacities, receiving limits, case packs and delivery calendars with a planner. |
-| Sportswear forecasting | Build, backtest and evaluate a sportswear-specific model; demonstrate improvement before human promotion. |
+| Sportswear forecasting | Databricks baselines and GBT, Elastic Net, AdaBoost and PyTorch candidates are documented above. Best development-tuning WAPE is approximately 0.433, short of the ≤0.35 target. Run the store-allocation attainability diagnostic, redesign the model from its findings, then perform one governed internal evaluation before any human promotion. |
 | Optimization | Benchmark the greedy allocator against a solver; add explicit holding-cost, logistics-cost and service trade-offs if required. Global optimality is not guaranteed. |
 | Arrival and inventory timing | Replace uniform demand and aggregate transit assumptions with dated arrivals and time-phased inventory/capacity calculations. The current capacity check does not assume sales will create space before delivery. |
 | Simulation realism | Add realistic demand uncertainty, calendar/promotion rollover, richer order states, returns and supply arrivals. Daily forecast adjustment is a simple simulation rule. |
@@ -309,7 +362,7 @@ npm run test:browser
 FLOWSTOCK_LIVE_TEST=1 npm test -- tests/liveData.test.ts
 ```
 
-Latest verified application checks: **27 TypeScript tests**, **6 Python tests**, **4 browser journeys**, type checking, ESLint, configured formatting and production build. The optional imported-data test is skipped in the standard suite. Browser checks cover sportswear plan generation and the screenshot's zero-quantity explanation, authentication/idempotency, overrides, approvals, shipping and next-day refresh. Production build currently emits an advisory that the Next-specific ESLint plugin is not configured; the project's explicit lint checks run.
+Latest verified application checks: **30 TypeScript tests**, **6 Python tests**, **5 browser journeys**, type checking, ESLint, configured formatting and production build. The optional imported-data test is skipped in the standard suite. Browser checks cover data-source isolation, sportswear plan generation and the screenshot's zero-quantity explanation, authentication/idempotency, overrides, approvals, shipping and next-day refresh. Production build currently emits an advisory that the Next-specific ESLint plugin is not configured; the project's explicit lint checks run.
 
 ### Further documentation
 
@@ -318,6 +371,7 @@ Latest verified application checks: **27 TypeScript tests**, **6 Python tests**,
 - [Implementation handover — includes historical grocery results](docs/implementation_report.md)
 - [Complete data/domain audit](docs/data_domain_audit.md)
 - [FreshRetailNet data card and attribution](docs/data_card_freshretailnet.md)
+- [Business Central discovery and field-gap report](docs/business_central_discovery.md)
 - [Field mapping](docs/data_mapping.md) and [research data contract](docs/data_contract.json)
 - [Model card](docs/model_card.md) and [evaluation results](docs/evaluation_results.json)
 - [OpenAPI specification](docs/openapi.json) and [n8n contract](docs/n8n_integration_contract.md)

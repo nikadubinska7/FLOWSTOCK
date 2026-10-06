@@ -1,4 +1,5 @@
 import type { PlanSummary } from "@/lib/domain/plan";
+import type { DataSourceId, DataSourceSummary } from "@/lib/dataSources/types";
 import { money, whole } from "@/lib/utils/formatters";
 export function RecommendedPlan({
   loading,
@@ -6,55 +7,112 @@ export function RecommendedPlan({
   onReject,
   summary,
   active,
+  source,
+  onSource,
+  sources,
   snapshot,
   onSnapshot,
-  models,
+  onTestConnection,
+  sourceActionLoading,
 }: {
   loading: boolean;
   onRun: () => void;
   onReject: () => void;
   summary: PlanSummary | null;
   active: boolean;
+  source: DataSourceId;
+  onSource: (source: DataSourceId) => void;
+  sources: DataSourceSummary[];
   snapshot: string;
   onSnapshot: (s: string) => void;
-  models: { id: string }[];
+  onTestConnection: () => void;
+  sourceActionLoading: boolean;
 }) {
+  const selectedSource = sources.find((item) => item.id === source);
+  const canPlan = selectedSource?.capabilities.canPlan ?? false;
   return (
     <section className="glass-panel-strong rounded-3xl p-7" aria-busy={loading}>
       <h2 className="text-2xl font-semibold">Recommended plan</h2>
       <p className="my-3 text-sm text-cockpit-muted">
-        Retail replenishment · original sportswear dataset: 70 stores and 1,200
-        SKUs. Mock inventory and commercial data · simulated business impact.
+        {selectedSource?.description ??
+          "Choose the operational data source used for this planning run."}
       </p>
-      <div className="flex flex-wrap gap-3 items-center">
-        <label className="text-sm">
-          Data snapshot{" "}
+      <div className="grid gap-4 lg:grid-cols-[minmax(220px,0.8fr)_minmax(300px,1.2fr)_auto] lg:items-end">
+        <label className="text-sm text-cockpit-muted">
+          <span className="mb-2 block font-medium text-cockpit-text">
+            Data source
+          </span>
           <select
-            aria-label="Data snapshot"
-            className="ml-2 rounded bg-slate-800 p-2"
-            value={snapshot}
-            onChange={(e) => onSnapshot(e.target.value)}
+            aria-label="Data source"
+            className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-3 text-cockpit-text"
+            value={source}
+            onChange={(event) => onSource(event.target.value as DataSourceId)}
             disabled={loading}
           >
-            <option value="sportswear">
-              Original sportswear · 70 stores · 1,200 SKUs
-            </option>
-            <option value="latest">Latest planning day</option>
-            <option value="demo">Grocery demo · reference dataset</option>
-            {models.map((m) => (
-              <option key={m.id} value={m.id}>
-                Grocery research data · {m.id}
+            {sources.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-sm text-cockpit-muted">
+          <span className="mb-2 block font-medium text-cockpit-text">
+            Data snapshot
+          </span>
+          <select
+            aria-label="Data snapshot"
+            className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-3 text-cockpit-text disabled:opacity-50"
+            value={snapshot}
+            onChange={(e) => onSnapshot(e.target.value)}
+            disabled={loading || !selectedSource?.snapshots.length}
+          >
+            {!selectedSource?.snapshots.length ? (
+              <option value="">No synchronized snapshots</option>
+            ) : null}
+            {selectedSource?.snapshots.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.label}
               </option>
             ))}
           </select>
         </label>
         <button
-          disabled={loading}
+          disabled={loading || !canPlan || !snapshot}
           onClick={onRun}
-          className="rounded-xl bg-blue-600 px-5 py-3 font-semibold disabled:opacity-50"
+          className="rounded-xl bg-blue-600 px-5 py-3 font-semibold disabled:cursor-not-allowed disabled:opacity-45"
         >
           {loading ? "Working…" : "Generate recommended plan"}
         </button>
+      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
+        <span
+          className={`rounded-full border px-3 py-1 ${canPlan ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-200" : "border-amber-300/20 bg-amber-400/10 text-amber-100"}`}
+        >
+          {selectedSource?.statusMessage ?? "Source unavailable"}
+        </span>
+        {selectedSource?.kind === "api" ? (
+          <>
+            <button
+              type="button"
+              onClick={onTestConnection}
+              disabled={
+                sourceActionLoading ||
+                !selectedSource.capabilities.canTestConnection
+              }
+              className="rounded-lg border border-white/10 px-3 py-1.5 text-cockpit-muted disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              {sourceActionLoading ? "Testing…" : "Test connection"}
+            </button>
+            <button
+              type="button"
+              disabled={!selectedSource.capabilities.canSync}
+              className="rounded-lg border border-white/10 px-3 py-1.5 text-cockpit-muted disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              Sync data
+            </button>
+          </>
+        ) : null}
         {active ? (
           <button
             disabled={loading}

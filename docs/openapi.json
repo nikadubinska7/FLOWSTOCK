@@ -35,6 +35,35 @@
         "security": []
       }
     },
+    "/data-sources": {
+      "get": {
+        "summary": "List configured planning data sources and their snapshots",
+        "responses": {
+          "200": {
+            "description": "Source status, capabilities and available snapshots"
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        }
+      }
+    },
+    "/data-sources/business-central/test": {
+      "post": {
+        "summary": "Test the configured Business Central connection and discover standard endpoints",
+        "responses": {
+          "200": {
+            "description": "Verified environment, company, endpoint inventory and ledger date coverage"
+          },
+          "400": {
+            "description": "Missing configuration, OAuth failure, environment/company mismatch or API failure"
+          },
+          "401": {
+            "description": "Flowstock authentication required"
+          }
+        }
+      }
+    },
     "/runs": {
       "get": {
         "summary": "GET /runs",
@@ -51,7 +80,18 @@
           "409": {
             "description": "Conflict or busy; see error code"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["sportswear-csv", "grocery-research", "business-central"]
+            }
+          }
+        ]
       },
       "post": {
         "summary": "POST /runs",
@@ -518,6 +558,11 @@
         "type": "object",
         "additionalProperties": false,
         "properties": {
+          "source": {
+            "type": "string",
+            "enum": ["sportswear-csv", "grocery-research", "business-central"],
+            "description": "Planning data source. Optional for backward compatibility; new clients should send it."
+          },
           "snapshot": {
             "type": "string",
             "description": "sportswear (original sportswear), latest (latest planning day), demo (legacy grocery fixture), or completed grocery model-version package ID"

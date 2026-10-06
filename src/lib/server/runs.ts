@@ -2,11 +2,7 @@ import path from "path";
 import { randomUUID, createHash } from "crypto";
 import { promises as fs } from "fs";
 import { loadCsvPackage } from "@/lib/domain/joins";
-import {
-  latestPackagePath,
-  sportswearPackagePath,
-  groceryDemoPath,
-} from "@/lib/utils/filePaths";
+import type { DataSourceId } from "@/lib/dataSources/types";
 import {
   recommendPlan,
   summarizePlan,
@@ -25,11 +21,13 @@ import {
   modelRoot,
   stateRoot,
 } from "./storage";
+import { inferDataSource, resolveDataSnapshot } from "./dataSources";
 export type Run = {
   id: string;
   plan_id: string;
   status: "queued" | "running" | "ready" | "failed";
   approval_state: "pending" | "approved" | "rejected";
+  source: DataSourceId;
   snapshot: string;
   runDate: string;
   rows: WorkingRow[];
@@ -43,16 +41,11 @@ export type Run = {
   inventory_hash?: string;
   config?: typeof objectiveConfig;
 };
-export async function snapshotPath(snapshot: string) {
-  if (snapshot === "latest") return latestPackagePath();
-  if (snapshot === "sportswear") return sportswearPackagePath();
-  // Preserve the meaning of existing grocery runs and API clients.
-  if (snapshot === "demo") return groceryDemoPath;
-  if (snapshot.startsWith("model-")) {
-    safeId(snapshot);
-    return path.join(modelRoot, snapshot, "package");
-  }
-  throw new Error("INVALID_SNAPSHOT");
+export async function snapshotPath(
+  snapshot: string,
+  source: DataSourceId = inferDataSource(snapshot),
+) {
+  return resolveDataSnapshot(source, snapshot);
 }
 async function fingerprint(folder: string, inventoryOnly = false) {
   const names = (await fs.readdir(folder))
@@ -74,9 +67,14 @@ export async function saveRun(run: Run) {
   run.updated_at = new Date().toISOString();
   await writeState(`runs/${run.id}.json`, run);
 }
-export async function startRun(snapshot: string, actor: string, key: string) {
+export async function startRun(
+  snapshot: string,
+  actor: string,
+  key: string,
+  source: DataSourceId = inferDataSource(snapshot),
+) {
   safeId(key);
-  await snapshotPath(snapshot);
+  await snapshotPath(snapshot, source);
   return locked(async () => {
     const configHash = createHash("sha256")
       .update(JSON.stringify(objectiveConfig))
@@ -101,12 +99,16 @@ export async function startRun(snapshot: string, actor: string, key: string) {
         version: objectiveConfig.version,
       });
     }
-    const existing = await readState<{ id: string; snapshot: string } | null>(
-      `idempotency/run-${key}.json`,
-      null,
-    );
+    const existing = await readState<{
+      id: string;
+      source?: DataSourceId;
+      snapshot: string;
+    } | null>(`idempotency/run-${key}.json`, null);
     if (existing) {
-      if (existing.snapshot !== snapshot)
+      if (
+        existing.snapshot !== snapshot ||
+        (existing.source ?? inferDataSource(existing.snapshot)) !== source
+      )
         throw new Error("IDEMPOTENCY_CONFLICT");
       return getRun(existing.id);
     }
@@ -116,6 +118,7 @@ export async function startRun(snapshot: string, actor: string, key: string) {
       plan_id: id,
       status: "queued",
       approval_state: "pending",
+      source,
       snapshot,
       runDate: "",
       rows: [],
@@ -125,8 +128,13 @@ export async function startRun(snapshot: string, actor: string, key: string) {
       config: { ...objectiveConfig },
     };
     await saveRun(run);
-    await writeState(`idempotency/run-${key}.json`, { id, snapshot });
-    await audit("run_queued", actor, { id, snapshot, config: objectiveConfig });
+    await writeState(`idempotency/run-${key}.json`, { id, source, snapshot });
+    await audit("run_queued", actor, {
+      id,
+      source,
+      snapshot,
+      config: objectiveConfig,
+    });
     return run;
   });
 }
@@ -140,7 +148,10 @@ export async function executeRun(id: string) {
     run.status = "running";
     await saveRun(run);
     try {
-      const folder = await snapshotPath(run.snapshot);
+      const folder = await snapshotPath(
+        run.snapshot,
+        run.source ?? inferDataSource(run.snapshot),
+      );
       const loaded = await loadCsvPackage(folder);
       const registry = await readState<{ champion: string | null }>(
         "registry.json",
@@ -266,10 +277,12 @@ export async function decideRun(
       ids.some((x) => !run.rows.some((r) => r.id === x))
     )
       throw new Error("INVALID_SELECTED_ROWS");
-    const folder = await snapshotPath(run.snapshot);
+    const source = run.source ?? inferDataSource(run.snapshot);
+    const folder = await snapshotPath(run.snapshot, source);
     if ((await fingerprint(folder)) !== run.source_hash)
       throw new Error("STALE_SNAPSHOT");
-    const consumed = await readState<string[]>("consumed-snapshots.json", []);
+    const consumedFile = `data-sources/${source}/consumed-snapshots.json`;
+    const consumed = await readState<string[]>(consumedFile, []);
     if (consumed.includes(run.inventory_hash ?? run.source_hash!))
       throw new Error("SNAPSHOT_ALREADY_APPROVED");
     const selected = new Set(ids);
@@ -290,7 +303,7 @@ export async function decideRun(
     if (!approved.length || approved.some(isApprovalBlocked))
       throw new Error("CONSTRAINT_VIOLATION");
     // Reserve snapshot before side effects. Failure requires review, never blind duplicate shipping.
-    await writeState("consumed-snapshots.json", [
+    await writeState(consumedFile, [
       ...consumed,
       run.inventory_hash ?? run.source_hash,
     ]);
@@ -300,6 +313,7 @@ export async function decideRun(
       approved,
       createDocs,
       folder,
+      source,
     );
     run.approval_state = "approved";
     await saveRun(run);
@@ -318,7 +332,7 @@ export async function decideRun(
   });
 }
 
-export async function runHistory() {
+export async function runHistory(source?: DataSourceId) {
   let names: string[] = [];
   try {
     names = await fs.readdir(path.join(stateRoot, "runs"));
@@ -329,6 +343,14 @@ export async function runHistory() {
       .map((n) => readState<Run>(`runs/${n}`)),
   );
   return runs
+    .filter(
+      (run) =>
+        !source || (run.source ?? inferDataSource(run.snapshot)) === source,
+    )
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
-    .map(({ rows, ...r }) => ({ ...r, total: rows.length }));
+    .map(({ rows, ...r }) => ({
+      ...r,
+      source: r.source ?? inferDataSource(r.snapshot),
+      total: rows.length,
+    }));
 }

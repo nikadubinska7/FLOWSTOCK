@@ -25,6 +25,7 @@ import { Badge } from "@/components/common/Badge";
 import { GlassCard } from "@/components/common/GlassCard";
 import { money, whole } from "@/lib/utils/formatters";
 import { isApprovalBlocked } from "@/lib/domain/constraints";
+import type { DataSourceId, DataSourceSummary } from "@/lib/dataSources/types";
 
 const emptyKpis: Kpis = {
   inventoryValue: 0,
@@ -51,6 +52,23 @@ const defaultFilters: Filters = {
   dataIssue: "",
   finalPositive: ""
 };
+
+const initialDataSources: DataSourceSummary[] = [
+  {
+    id: "sportswear-csv", label: "Sportswear CSV", kind: "csv", status: "ready", statusMessage: "Ready",
+    description: "Original mock sportswear network: 70 stores and 1,200 SKUs.", defaultSnapshot: "latest",
+    snapshots: [
+      {id:"latest", label:"Latest sportswear planning day", description:"Most recent approved sportswear package."},
+      {id:"sportswear", label:"Original sportswear dataset", description:"Original sportswear CSV package."}
+    ],
+    capabilities: {canPlan:true, canTestConnection:false, canSync:true}
+  },
+  {
+    id: "business-central", label: "Microsoft Business Central", kind: "api", status: "not_connected", statusMessage: "Not connected",
+    description: "Business Central API source. Connector discovery is required.", defaultSnapshot: null, snapshots: [],
+    capabilities: {canPlan:false, canTestConnection:false, canSync:false}
+  }
+];
 
 function filterRows(rows: WorkingRow[], filters: Filters): WorkingRow[] {
   const search = filters.search.trim().toLowerCase();
@@ -514,7 +532,9 @@ function SupportingPanels({
 export default function FlowstockApp() {
   const [planId, setPlanId] = useState("");
   const [revision, setRevision] = useState(0);
+  const [source, setSource] = useState<DataSourceId>("sportswear-csv");
   const [snapshot, setSnapshot] = useState("latest");
+  const [dataSources, setDataSources] = useState<DataSourceSummary[]>(initialDataSources);
   const [health, setHealth] = useState<Health | null>(null);
   async function refreshHealth() { const r=await fetch("/api/v1/models"); if(r.ok)setHealth(await r.json()); }
   const [rows, setRows] = useState<WorkingRow[]>([]);
@@ -529,6 +549,7 @@ export default function FlowstockApp() {
   const [filters, setFilters] = useState<Filters>(defaultFilters);
   const [impactSort, setImpactSort] = useState<"none" | "desc" | "asc">("none");
   const [loading, setLoading] = useState(true);
+  const [sourceActionLoading, setSourceActionLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [drawerRow, setDrawerRow] = useState<WorkingRow | null>(null);
   const [pendingApproval, setPendingApproval] = useState<{ rows: WorkingRow[]; blocked: number } | null>(null);
@@ -540,21 +561,24 @@ export default function FlowstockApp() {
   const [explanationRiskGroup, setExplanationRiskGroup] = useState<RiskGroup | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
 
-  async function refresh() {
+  async function refresh(selectedSource: DataSourceId = source, selectedSnapshot: string = snapshot) {
     setLoading(true);
-    setMessage("Loading latest CSV package...");
+    setMessage("Loading selected data source...");
     try {
       await fetch("/api/session", {method:"POST"});
       void refreshHealth();
+      const catalogResponse=await fetch("/api/v1/data-sources",{cache:"no-store"});
+      if(catalogResponse.ok)setDataSources(((await catalogResponse.json()) as {sources:DataSourceSummary[]}).sources);
       setPlanId("");
-      const response = await fetch("/api/refresh", { cache: "no-store" });
-      if (!response.ok) throw new Error("Refresh failed");
+      const params=new URLSearchParams({source:selectedSource,snapshot:selectedSnapshot});
+      const response = await fetch(`/api/refresh?${params}`, { cache: "no-store" });
+      if (!response.ok) {const failure=await response.json().catch(()=>null);throw new Error(failure?.error?.message??"Refresh failed");}
       const data = (await response.json()) as RefreshResponse;
       setRows(data.rows);
       setCurrentKpis(data.currentKpis);
       setSimulationKpis(data.simulationKpis);
       setDataIssues(data.dataIssues);
-      const historyResponse=await fetch("/api/v1/runs");
+      const historyResponse=await fetch(`/api/v1/runs?source=${selectedSource}`);
       if(historyResponse.ok){
         const history=await historyResponse.json();
         setRunHistory(history.runs.filter((r:{approval_state:string})=>r.approval_state === "approved").map((r:{runDate:string;plan_id:string;result:ApprovalResponse;snapshot:string})=>({runDate:r.runDate,scenario:r.plan_id,approvedRows:r.result.approvedRows,approvedUnits:r.result.approvedUnits,retailValue:r.result.totalRetailValue,costValue:r.result.totalCostValue,packagePath:r.snapshot})));
@@ -564,7 +588,8 @@ export default function FlowstockApp() {
       setActivePlan("");
       setImpactSort("none");
       setFrozenOrderIds(null);
-      setMessage(`Loaded ${data.rows.length.toLocaleString()} store-SKU rows.`);
+      const sourceLabel=dataSources.find(item=>item.id===selectedSource)?.label??selectedSource;
+      setMessage(`Loaded ${data.rows.length.toLocaleString()} store-SKU rows from ${sourceLabel}.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not refresh package.");
     } finally {
@@ -575,6 +600,35 @@ export default function FlowstockApp() {
   useEffect(() => {
     void refresh();
   }, []);
+
+  function clearWorkspaceForSourceChange(){
+    setPlanId("");setRows([]);setCurrentKpis(emptyKpis);setSimulationKpis(emptyKpis);setDataIssues([]);setRunHistory([]);setRunDate("");setPackagePath("");setActivePlan("");setLastApproval(null);setFrozenOrderIds(null);
+  }
+  function changeSource(nextSource:DataSourceId){
+    const definition=dataSources.find(item=>item.id===nextSource);const nextSnapshot=definition?.defaultSnapshot??"";
+    setSource(nextSource);setSnapshot(nextSnapshot);clearWorkspaceForSourceChange();
+    if(definition?.capabilities.canPlan&&nextSnapshot)void refresh(nextSource,nextSnapshot);
+    else setMessage(definition?.statusMessage??"This data source is not available for planning yet.");
+  }
+  function changeSnapshot(nextSnapshot:string){
+    setSnapshot(nextSnapshot);clearWorkspaceForSourceChange();if(nextSnapshot)void refresh(source,nextSnapshot);
+  }
+
+  async function testSourceConnection(){
+    if(source!=="business-central")return;
+    setSourceActionLoading(true);setMessage("Testing the Business Central connection and discovering available data…");
+    try{
+      const response=await fetch("/api/v1/data-sources/business-central/test",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
+      const result=await response.json();if(!response.ok)throw new Error(result.error?.message??"Business Central connection failed");
+      const catalogResponse=await fetch("/api/v1/data-sources",{cache:"no-store"});
+      if(catalogResponse.ok)setDataSources(((await catalogResponse.json()) as {sources:DataSourceSummary[]}).sources);
+      const available=(result.endpoints as {available:boolean}[]).filter(endpoint=>endpoint.available).length;
+      const range=result.itemLedgerDateRange?.earliest&&result.itemLedgerDateRange?.latest?` Item ledger dates: ${result.itemLedgerDateRange.earliest} to ${result.itemLedgerDateRange.latest}.`:"";
+      const recent=typeof result.recent90DayLedger?.recordCount==="number"?` Latest 90-day ledger window contains ${result.recent90DayLedger.recordCount.toLocaleString()} entries.`:"";
+      setMessage(`Connected to ${result.environment} · ${result.company.name}. ${available} standard endpoints available.${range}${recent}`);
+    }catch(error){setMessage(error instanceof Error?error.message:"Business Central connection failed");}
+    finally{setSourceActionLoading(false);}
+  }
 
   const filteredRows = useMemo(() => filterRows(rows, filters), [rows, filters]);
   const sortedFilteredRows = useMemo(() => {
@@ -721,7 +775,7 @@ export default function FlowstockApp() {
   async function runPlan() {
     setLoading(true);setMessage("Preparing forecast and recommended plan…");
     try {
-      const response=await fetch("/api/v1/runs",{method:"POST",headers:{"Content-Type":"application/json","Idempotency-Key":crypto.randomUUID()},body:JSON.stringify({snapshot})});
+      const response=await fetch("/api/v1/runs",{method:"POST",headers:{"Content-Type":"application/json","Idempotency-Key":crypto.randomUUID()},body:JSON.stringify({source,snapshot})});
       const job=await response.json();if(!response.ok)throw new Error(job.error?.message??"Run failed");
       let data;
       for(let attempt=0;attempt<120;attempt++) {
@@ -734,7 +788,7 @@ export default function FlowstockApp() {
       if(data?.status!=="ready")throw new Error("Run still processing; check run status before retrying.");
       const all:WorkingRow[]=[...data.rows];
       for(let offset=1000;offset<data.total;offset+=1000){const r=await fetch(`/api/v1/runs/${job.id}?offset=${offset}&limit=1000`);if(!r.ok)throw new Error("Could not load all plan rows");all.push(...(await r.json()).rows);}
-      setRows(all);setPlanId(job.id);setRevision(data.revision);setRunDate(data.runDate);setPackagePath(snapshot);
+      setRows(all);setPlanId(job.id);setRevision(data.revision);setRunDate(data.runDate);
       setCurrentKpis(calculateKpis(all,false));setSimulationKpis(calculateKpis(all,true));setActivePlan("Recommended plan");setFrozenOrderIds(null);setImpactSort("desc");setMessage("Recommended plan ready. Review exceptions before approval.");
     }catch(error){setMessage(error instanceof Error?error.message:"Run failed");}finally{setLoading(false);}
   }
@@ -808,7 +862,7 @@ export default function FlowstockApp() {
       setLastApproval(result);
       setPendingApproval(null);
       setMessage(`Approved ${result.approvedRows} rows. Next Refresh will load the new package.`);
-      await refresh();
+      setSnapshot("latest");await refresh(source,"latest");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not approve rows.");
     } finally {
@@ -818,7 +872,7 @@ export default function FlowstockApp() {
 
   return (
     <main className="premium-shell min-h-screen bg-cockpit-bg text-cockpit-text">
-      <AppHeader runDate={runDate} packagePath={packagePath} loading={loading} onRefresh={refresh} />
+      <AppHeader runDate={runDate} packagePath={packagePath} sourceLabel={dataSources.find(item=>item.id===source)?.label??source} loading={loading} onRefresh={()=>void refresh()} />
       <div className="lg:flex">
         <Sidebar activeView={activeView} onChange={setActiveView} onExport={exportCurrentTable} onOpenAi={() => setAiOpen(true)} />
         <div className="mx-auto min-w-0 max-w-[1780px] flex-1 space-y-8 p-8">
@@ -846,7 +900,7 @@ export default function FlowstockApp() {
             <>
               <KpiPanel title="Current State" current={currentKpis} simulation={simulationKpis} />
               <KpiPanel title="Simulation" current={currentKpis} simulation={simulationKpis} />
-              <RecommendedPlan loading={loading} onRun={runPlan} onReject={rejectPlan} summary={planId ? summarizePlan(rows) : null} active={Boolean(planId)} snapshot={snapshot} onSnapshot={setSnapshot} models={health?.models ?? []} />
+              <RecommendedPlan loading={loading} onRun={runPlan} onReject={rejectPlan} summary={planId ? summarizePlan(rows) : null} active={Boolean(planId)} source={source} onSource={changeSource} sources={dataSources} snapshot={snapshot} onSnapshot={changeSnapshot} onTestConnection={testSourceConnection} sourceActionLoading={sourceActionLoading} />
               <TableFilters
                 filters={filters}
                 stores={stores}

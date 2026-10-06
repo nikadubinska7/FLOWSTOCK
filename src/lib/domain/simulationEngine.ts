@@ -3,8 +3,9 @@ import path from "path";
 import { readCsv } from "@/lib/csv/readCsv";
 import { writeCsv } from "@/lib/csv/writeCsv";
 import type { ApprovalResponse, CsvRecord, WorkingRow } from "@/lib/domain/types";
+import type { DataSourceId } from "@/lib/dataSources/types";
 import { addDays, deliveryDate } from "@/lib/utils/dates";
-import { latestPackagePath, nextInputPath, outputRootForRun, runsRoot } from "@/lib/utils/filePaths";
+import { latestPackagePathForSource, nextInputPathForSource, outputRootForSource, sourceRunsRoot } from "@/lib/utils/filePaths";
 import { n, round } from "@/lib/utils/numbers";
 import { createShippingDocuments } from "@/lib/domain/shippingDocuments";
 import { isApprovalBlocked } from "@/lib/domain/constraints";
@@ -27,16 +28,16 @@ async function copyPackage(source: string, destination: string): Promise<void> {
   );
 }
 
-export async function approveRows(runDate: string, scenario: string, rows: WorkingRow[], createDocs: boolean, sourceOverride?: string): Promise<ApprovalResponse> {
+export async function approveRows(runDate: string, scenario: string, rows: WorkingRow[], createDocs: boolean, sourceOverride?: string, dataSource: DataSourceId = "sportswear-csv"): Promise<ApprovalResponse> {
   const validRows = rows.filter((row) => row.finalQty > 0 && !isApprovalBlocked(row));
   const blockedRowsExcluded = rows.filter((row) => row.finalQty > 0 && isApprovalBlocked(row)).length;
   const approvalId = `APR-${runDate}-${Date.now()}`;
-  const outputRoot = outputRootForRun(runDate);
+  const outputRoot = outputRootForSource(dataSource, runDate);
   const approvedDir = path.join(outputRoot, "approved_replenishment");
   const shippingDir = path.join(outputRoot, "shipping_docs");
-  const sourcePackage = sourceOverride ?? await latestPackagePath();
+  const sourcePackage = sourceOverride ?? await latestPackagePathForSource(dataSource);
   const nextRunDate = addDays(runDate, 1);
-  const nextPackage = nextInputPath(nextRunDate, approvalId);
+  const nextPackage = nextInputPathForSource(dataSource, nextRunDate, approvalId);
 
   const approvedRows: CsvRecord[] = validRows.map((row) => ({
     approval_id: approvalId,
@@ -65,7 +66,7 @@ export async function approveRows(runDate: string, scenario: string, rows: Worki
   await copyPackage(sourcePackage, nextPackage);
   await createNextPackageFiles(sourcePackage, nextPackage, runDate, nextRunDate, approvalId, scenario, validRows);
 
-  await fs.writeFile(path.join(runsRoot,"active.json"), JSON.stringify({date: nextRunDate, approval_id: approvalId}));
+  await fs.writeFile(path.join(sourceRunsRoot(dataSource),"active.json"), JSON.stringify({date: nextRunDate, approval_id: approvalId}));
   return {
     approvalId,
     approvedRows: validRows.length,

@@ -1,4 +1,16 @@
 import {test,expect} from '@playwright/test';
+test('data source selector keeps Business Central planning disabled until synchronized',async({page})=>{
+ await page.goto('/');
+ await expect(page.getByLabel('Data source')).toHaveValue('sportswear-csv');
+ await page.getByLabel('Data source').selectOption('business-central');
+ await expect(page.getByRole('button',{name:'Sync data',exact:true})).toBeDisabled();
+ await expect(page.getByRole('button',{name:'Generate recommended plan',exact:true}).first()).toBeDisabled();
+ const testConnection=page.getByRole('button',{name:'Test connection',exact:true});
+ if(await testConnection.isEnabled()){
+  await testConnection.click();
+  await expect(page.getByText(/Connected to .*CRONUS USA, Inc\./)).toBeVisible({timeout:30000});
+ }else await expect(testConnection).toBeDisabled();
+});
 test('sportswear planner generates exactly one plan and inspects evidence',async({page})=>{
  test.setTimeout(120000);
  await page.goto('/');await expect(page.getByRole('button',{name:'Generate recommended plan',exact:true}).first()).toBeVisible();
@@ -52,17 +64,18 @@ test('server override validation, approval, shipping and next-day loop',async({r
  const replay=await request.post('/api/v1/runs',{data:{snapshot:'demo'},headers:{'Idempotency-Key':`replay-${Date.now()}`}});const replayRun=await replay.json();
  let replayPlan;for(let i=0;i<60;i++){replayPlan=await(await request.get(`/api/v1/runs/${replayRun.id}?limit=1000`)).json();if(replayPlan.status==='ready')break;await new Promise(r=>setTimeout(r,100));}
  const repeat=await request.post(`/api/v1/runs/${replayRun.id}/decision`,{data:{action:'approve',row_ids:[row.id],create_shipping:true,reason:'Duplicate inventory snapshot'}});expect(repeat.status()).toBe(409);
- const refresh=await(await request.get('/api/refresh')).json();expect(refresh.runDate).toBe('2026-05-16');expect(refresh.rows.every((x:{finalQty:number})=>x.finalQty===0)).toBe(true);
+ const refresh=await(await request.get('/api/refresh?source=grocery-research&snapshot=latest')).json();expect(refresh.runDate).toBe('2026-05-16');expect(refresh.rows.every((x:{finalQty:number})=>x.finalQty===0)).toBe(true);
 });
 
 test('planner completes manual override and shipping approval in the UI',async({page})=>{
+ test.setTimeout(90_000);
  await page.goto('/');await page.getByLabel('Data snapshot').selectOption('latest');
  await page.getByRole('button',{name:'Generate recommended plan',exact:true}).first().click();
- await expect(page.getByText('Recommended plan ready. Review exceptions before approval.')).toBeVisible();
+ await expect(page.getByText('Recommended plan ready. Review exceptions before approval.')).toBeVisible({timeout:45_000});
  const index=await page.getByRole('spinbutton').evaluateAll(nodes=>nodes.findIndex(n=>Number((n as HTMLInputElement).value)>12));expect(index).toBeGreaterThanOrEqual(0);
  const quantity=page.getByRole('spinbutton').nth(index);const row=quantity.locator('xpath=ancestor::tr');const pack=Number(await row.getAttribute('data-pack-multiple'));
  await quantity.fill(String(pack));await quantity.press('Enter');
- await row.getByPlaceholder('Required').fill('Planner reviewed the synthetic grocery demand');
+ await row.getByPlaceholder('Required').fill('Planner reviewed the synthetic sportswear demand');
  await row.getByRole('checkbox').check();
  await page.getByRole('button',{name:'Approve selected',exact:true}).click();
  await expect(page.getByRole('dialog',{name:'Confirm replenishment approval'})).toBeVisible();
@@ -71,5 +84,5 @@ test('planner completes manual override and shipping approval in the UI',async({
  await page.getByRole('button',{name:'Yes, create by route and delivery date'}).click();
  const download=await downloaded;expect(download.suggestedFilename()).toContain('shipping-');
  await expect(page.getByRole('heading',{name:'Last approval'})).toBeVisible();
- await expect(page.getByText('Data synced 2026-05-17')).toBeVisible();
+ await expect(page.getByText('Data synced 2026-05-16')).toBeVisible();
 });

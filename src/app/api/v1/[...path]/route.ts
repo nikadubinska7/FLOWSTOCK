@@ -15,10 +15,16 @@ import {
   modelAction,
   pipelineJob,
 } from "@/lib/server/models";
-import { readState, safeId, audit } from "@/lib/server/storage";
+import { readState, safeId, audit, writeState } from "@/lib/server/storage";
 import { loadCsvPackage } from "@/lib/domain/joins";
 import { monitorOutcomes, type Outcome } from "@/lib/server/monitoring";
 import { randomUUID } from "crypto";
+import {
+  inferDataSource,
+  isDataSourceId,
+  listDataSources,
+} from "@/lib/server/dataSources";
+import { testBusinessCentralConnection } from "@/lib/server/businessCentral";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 function object(x: unknown): Record<string, unknown> {
@@ -57,14 +63,57 @@ async function handle(req: NextRequest) {
     const actor = await authenticate(req, admin);
     const body = method === "POST" ? object(await req.json()) : {};
     let result: unknown;
-    if (p[0] === "runs" && !p[1] && method === "POST") {
-      fields(body, ["snapshot"]);
-      const key = string(req.headers.get("idempotency-key"));
-      const run = await startRun(
-        string(body.snapshot ?? "latest"),
-        actor.name,
-        key,
+    if (p[0] === "data-sources" && !p[1] && method === "GET") {
+      result = { sources: await listDataSources() };
+    } else if (
+      p[0] === "data-sources" &&
+      p[1] === "business-central" &&
+      p[2] === "test" &&
+      method === "POST"
+    ) {
+      fields(body, []);
+      const connection = await testBusinessCentralConnection();
+      await writeState(
+        "data-sources/business-central/connection.json",
+        connection,
       );
+      await audit("business_central_connection_tested", actor.name, {
+        environment: connection.environment,
+        company: connection.company,
+        endpoints: connection.endpoints.map((endpoint) => ({
+          endpoint: endpoint.endpoint,
+          available: endpoint.available,
+          status: endpoint.status,
+          recordCount: endpoint.recordCount,
+        })),
+        odataItemLedger: {
+          available: connection.odataItemLedger.available,
+          status: connection.odataItemLedger.status,
+          recordCount: connection.odataItemLedger.recordCount,
+        },
+        itemLedgerDateRange: connection.itemLedgerDateRange,
+        recent90DayLedger: connection.recent90DayLedger,
+      });
+      result = {
+        connected: connection.connected,
+        environment: connection.environment,
+        company: connection.company,
+        availableCompanies: connection.availableCompanies,
+        endpoints: connection.endpoints,
+        odataItemLedger: connection.odataItemLedger,
+        itemLedgerDateRange: connection.itemLedgerDateRange,
+        recent90DayLedger: connection.recent90DayLedger,
+        testedAt: connection.testedAt,
+      };
+    } else if (p[0] === "runs" && !p[1] && method === "POST") {
+      fields(body, ["source", "snapshot"]);
+      const key = string(req.headers.get("idempotency-key"));
+      const snapshot = string(body.snapshot ?? "latest");
+      const source = body.source
+        ? string(body.source)
+        : inferDataSource(snapshot);
+      if (!isDataSourceId(source)) throw new Error("INVALID_DATA_SOURCE");
+      const run = await startRun(snapshot, actor.name, key, source);
       // Start background work; GET also resumes queued jobs after interruption.
       void executeRun(run.id).catch(() => undefined);
       return NextResponse.json(
@@ -72,7 +121,14 @@ async function handle(req: NextRequest) {
         { status: 202 },
       );
     } else if (p[0] === "runs" && !p[1] && method === "GET") {
-      const history = await runHistory();
+      const requestedSource = req.nextUrl.searchParams.get("source");
+      if (requestedSource && !isDataSourceId(requestedSource))
+        throw new Error("INVALID_DATA_SOURCE");
+      const history = await runHistory(
+        requestedSource && isDataSourceId(requestedSource)
+          ? requestedSource
+          : undefined,
+      );
       result = { runs: history.slice(0, 100), total: history.length };
     } else if (p[0] === "runs" && p[1]) {
       const id = safeId(p[1]);
@@ -180,10 +236,13 @@ async function handle(req: NextRequest) {
     } else if (p[0] === "jobs" && p[1] && method === "GET")
       result = await readState(`jobs/${safeId(p[1])}.json`);
     else if (p[0] === "validate" && method === "POST") {
-      fields(body, ["snapshot"]);
-      const loaded = await loadCsvPackage(
-        await snapshotPath(string(body.snapshot)),
-      );
+      fields(body, ["source", "snapshot"]);
+      const snapshot = string(body.snapshot);
+      const source = body.source
+        ? string(body.source)
+        : inferDataSource(snapshot);
+      if (!isDataSourceId(source)) throw new Error("INVALID_DATA_SOURCE");
+      const loaded = await loadCsvPackage(await snapshotPath(snapshot, source));
       result = {
         rows: loaded.rows.length,
         date: loaded.runDate,

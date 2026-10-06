@@ -10,9 +10,9 @@ Use `Authorization: Bearer $FLOWSTOCK_API_TOKEN` for planner operations and `Aut
 
 1. Schedule/manual trigger → GET `/api/v1/health`.
 2. POST `/api/v1/ingest` with `{ "source": "smoke" }` or `freshretailnet` (`offline` generates independent synthetic modelling data without network), admin token, unique `Idempotency-Key`. Poll GET `/api/v1/jobs/{id}`. No dataset contents travel through webhooks.
-3. POST `/api/v1/validate` with `{ "snapshot": "sportswear" }`, `latest`, `demo` (legacy grocery fixture), or a completed grocery `model-…` prepared package ID.
+3. GET `/api/v1/data-sources` to inspect source status and available snapshots. POST `/api/v1/data-sources/business-central/test` with `{}` for read-only OAuth, company and endpoint discovery. POST `/api/v1/validate` with `{ "source": "sportswear-csv", "snapshot": "sportswear" }`; grocery fixtures use source `grocery-research`. Snapshot-only payloads remain backward compatible.
 4. Optional POST `/api/v1/training` with `{ "source": "freshretailnet" }`; poll job status, retrieve model report. Training creates a candidate only.
-5. POST `/api/v1/runs` with `{ "snapshot": "sportswear" }` and `Idempotency-Key`. Response 202 has one `id`, one `plan_id`, `status`, and `approval_state`.
+5. POST `/api/v1/runs` with `{ "source": "sportswear-csv", "snapshot": "sportswear" }` and `Idempotency-Key`. Response 202 has one `id`, one `plan_id`, `status`, `approval_state`, `source`, and `snapshot`.
 6. GET `/api/v1/runs/{id}?offset=0&limit=100` until `ready`/`failed`; paginate up to 1,000 rows per request. Response contains one summary, weights/version, projected service, expected simulated margin, and per-SKU available/allocated/residual reconciliation.
 7. Human review → POST `/api/v1/runs/{id}/override` with `{ "revision": 0, "edits": [{ "id": "001|1", "finalQty": 12, "comment": "Planner adjusted expected demand" }] }`. Use returned revision for later edits. Comments are required; invalid quantities remain blocked for approval.
 8. Explicit human confirmation → POST `/api/v1/runs/{id}/decision` with `{ "action": "approve", "row_ids": ["001|1"], "create_shipping": true, "reason": "Reviewed by planner" }`. Reject with action `reject`, empty row list and false shipping. Approval closes the plan, validates server-owned quantities, and consumes the underlying inventory snapshot once, even if another model version supplied its forecasts.
@@ -26,7 +26,7 @@ No callbacks are implemented. Poll at 1–3 seconds; allow up to 30 minutes for 
 
 This local POC uses filesystem locks and persistent run/job JSON, not a distributed queue. Queued recommendation jobs resume when polled. Interrupted running jobs and stale `.flowstock/write.lock` require operator inspection/restart; do not delete locks or consumed snapshots blindly. A failed shipping/approval write leaves the source snapshot reserved to prevent duplicate shipping. Review partial outputs before recovery. Audit is append-only `.flowstock/audit.jsonl`; local filesystem access is the trust boundary, not tamper-proof compliance storage.
 
-GET `/api/v1/runs` lists the most recent 100 persisted runs for the history view. Formal request schemas are in `docs/openapi.json`.
+GET `/api/v1/runs?source=sportswear-csv` lists the most recent 100 persisted runs for that source. Formal request schemas are in `docs/openapi.json`.
 
 ## Example requests
 
@@ -35,7 +35,7 @@ curl -s http://127.0.0.1:3000/api/v1/health
 curl -s -X POST http://127.0.0.1:3000/api/v1/runs \
   -H "Authorization: Bearer $FLOWSTOCK_API_TOKEN" \
   -H 'Content-Type: application/json' -H 'Idempotency-Key: demo-run-001' \
-  -d '{"snapshot":"demo"}'
+  -d '{"source":"grocery-research","snapshot":"demo"}'
 curl -s "http://127.0.0.1:3000/api/v1/runs/RUN_ID?offset=0&limit=100" \
   -H "Authorization: Bearer $FLOWSTOCK_API_TOKEN"
 ```

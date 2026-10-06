@@ -100,6 +100,8 @@ export type WorkingRow = {
 };
 
 export type RefreshResponse = {
+  source?: string;
+  snapshot?: string;
   packagePath: string;
   runDate: string;
   rows: WorkingRow[];
