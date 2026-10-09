@@ -282,6 +282,8 @@ Step 22 execution note: the initial final comparison cell failed after training 
 
 Recovery correction: the first repair snippet assumed the original notebook variables were still active and failed with `NameError: CATALOG is not defined` after the Python session had been cleared or when run separately. The replacement recovery cell defines its imports, catalog, schema and table names explicitly. If the original Step 22 Python state has expired, its trained candidate existed only in memory because the failure occurred before persistence; in that case Step 22 must be rerun after recovering the historical Step 18 selection table.
 
+The subsequent standalone final-cell retry failed with `NameError: os is not defined`, confirming that the full Step 22 Python state had expired. Further one-variable repairs are inappropriate because the trained candidate, checkpoint inputs and comparison frames were also memory-resident. The Step 18 selection table has now been recovered, so the correct recovery is one complete Step 22 rerun on Serverless GPU; the corrected final comparison logic will then persist the result.
+
 ### Optional research commands
 
 ```bash
