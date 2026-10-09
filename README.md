@@ -300,6 +300,8 @@ The private Databricks notebook `15_build_v3_ai_platform.py` implements one gate
 
 These thresholds are acceptance gates, not recorded results. Results must be copied here only after a successful Databricks run. The app accepts the published `model_forecast` and `ranking_score` only from a validated Databricks V3 snapshot. Its constrained allocator combines the learned ranking with margin and service weights, while DC stock, packs, assortment, capacity and planner approval remain hard controls.
 
+V3 execution note — 9 October 2026, 21:25: the first Cell 2 run stopped before writing the weekly dataset because the notebook used Spark DataFrame caching. On Databricks Serverless, Spark Connect translated this into `PERSIST TABLE`, which that compute mode does not support. All five `.cache()` calls were removed from the V3 notebook. No training or evaluation result was produced by the failed run, and changing to GPU would not address this compatibility error. The corrected notebook should continue on Serverless CPU.
+
 The versioned APIs now include:
 
 - `POST /api/v1/data-sources/databricks-sportswear/test`
