@@ -280,6 +280,8 @@ Step 22 is the final authorized store-SKU performance trial before closing the s
 
 Step 22 execution note: the initial final comparison cell failed after training because the historical `flowstock_model_v2_neural_selection` table from Step 18 had been removed. No Step 22 result was lost and no internal-validation or sealed data was accessed. The final cell now checks for that table, falls back to the retained Step 18 candidate-results table, and uses the documented 0.4331 result only if neither historical table remains. Only the corrected comparison cell needs to be rerun; model retraining is unnecessary.
 
+Recovery correction: the first repair snippet assumed the original notebook variables were still active and failed with `NameError: CATALOG is not defined` after the Python session had been cleared or when run separately. The replacement recovery cell defines its imports, catalog, schema and table names explicitly. If the original Step 22 Python state has expired, its trained candidate existed only in memory because the failure occurred before persistence; in that case Step 22 must be rerun after recovering the historical Step 18 selection table.
+
 ### Optional research commands
 
 ```bash
