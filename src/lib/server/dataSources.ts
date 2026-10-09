@@ -13,6 +13,12 @@ import {
 } from "@/lib/utils/filePaths";
 import { modelRoot, readState, safeId } from "./storage";
 import { businessCentralConnectionKey } from "./businessCentral";
+import {
+  databricksConfigured,
+  databricksConnectionKey,
+  databricksSnapshotSummaries,
+  resolveDatabricksSnapshot,
+} from "./databricks";
 
 export interface DataSourceProvider {
   id: DataSourceId;
@@ -191,8 +197,62 @@ const businessCentralProvider: DataSourceProvider = {
   },
 };
 
+const databricksProvider: DataSourceProvider = {
+  id: "databricks-sportswear",
+  async summary() {
+    const configured = databricksConfigured();
+    const snapshots = await databricksSnapshotSummaries();
+    const connection = await readState<{
+      connectionKey: string;
+      testedAt: string;
+      warehouseId: string;
+      principal: string;
+    } | null>("data-sources/databricks-sportswear/connection.json", null);
+    let connected = false;
+    if (configured && connection) {
+      try {
+        connected = connection.connectionKey === databricksConnectionKey();
+      } catch {
+        connected = false;
+      }
+    }
+    return {
+      id: this.id,
+      label: "Databricks sportswear V3",
+      kind: "api",
+      status: snapshots.length
+        ? "ready"
+        : connected
+          ? "connected"
+          : configured
+            ? "configured"
+            : "not_connected",
+      statusMessage: snapshots.length
+        ? `${snapshots.length} synchronized snapshot${snapshots.length === 1 ? "" : "s"}`
+        : connected
+          ? "Connected · synchronize the planning snapshot"
+          : configured
+            ? "Credentials configured · connection not tested"
+            : "Databricks connection not configured",
+      description:
+        "Updated sportswear research dataset: 70 stores, 720 SKUs and a fixed-origin planning snapshot synchronized from Databricks serving tables.",
+      defaultSnapshot: snapshots[0]?.id ?? null,
+      snapshots,
+      capabilities: {
+        canPlan: snapshots.length > 0,
+        canTestConnection: configured,
+        canSync: configured,
+      },
+    };
+  },
+  async resolveSnapshot(snapshotId) {
+    return resolveDatabricksSnapshot(snapshotId);
+  },
+};
+
 const providers: Record<DataSourceId, DataSourceProvider> = {
   "sportswear-csv": sportswearProvider,
+  "databricks-sportswear": databricksProvider,
   "grocery-research": groceryProvider,
   "business-central": businessCentralProvider,
 };
@@ -214,9 +274,14 @@ export function getDataSourceProvider(sourceId: string): DataSourceProvider {
 
 export async function listDataSources(): Promise<DataSourceSummary[]> {
   return Promise.all(
-    (["sportswear-csv", "business-central", "grocery-research"] as const).map(
-      (id) => providers[id].summary(),
-    ),
+    (
+      [
+        "databricks-sportswear",
+        "sportswear-csv",
+        "business-central",
+        "grocery-research",
+      ] as const
+    ).map((id) => providers[id].summary()),
   );
 }
 

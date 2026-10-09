@@ -23,4 +23,13 @@ describe('single recommended plan',()=>{
   expect(()=>recommendPlan([makeRow()],{...objectiveConfig,margin_weight:2})).toThrow();
   expect(recommendPlan([makeRow({daysToDelivery:15})])[0].finalQty).toBe(0);
  });
+ it('uses the learned store ranking when scarce stock can serve only one store',()=>{
+  const rows=recommendPlan([
+   makeRow({id:'A|SKU001',storeId:'A',skuId:'SKU001',dcFreeStockOriginal:6,rankingScore:1}),
+   makeRow({id:'Z|SKU001',storeId:'Z',skuId:'SKU001',dcFreeStockOriginal:6,rankingScore:100}),
+  ]);
+  expect(rows.find(row=>row.storeId==='Z')?.finalQty).toBe(6);
+  expect(rows.find(row=>row.storeId==='A')?.finalQty).toBe(0);
+  expect(summarizePlan(rows).learned_ranking_active).toBe(true);
+ });
 });

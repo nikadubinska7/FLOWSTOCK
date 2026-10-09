@@ -23,6 +23,12 @@ export function summarizePlan(
     margin = 0,
     potentialMargin = 0,
     potentialService = 0;
+  const learnedRankingActive = rows.some(
+    (row) =>
+      typeof row.rankingScore === "number" &&
+      Number.isFinite(row.rankingScore) &&
+      row.rankingScore > 0,
+  );
   for (const r of rows) {
     const currentShortage = Math.max(
       0,
@@ -58,8 +64,13 @@ export function summarizePlan(
     margin_contribution: marginContribution,
     service_contribution: serviceContribution,
     objective_value:
-      config.margin_weight * marginContribution +
-      config.service_weight * serviceContribution,
+      (config.margin_weight * marginContribution +
+        config.service_weight * serviceContribution +
+        (learnedRankingActive ? config.ranking_weight : 0) *
+          serviceContribution) /
+      (config.margin_weight +
+        config.service_weight +
+        (learnedRankingActive ? config.ranking_weight : 0)),
     service_floor_shortfall: Math.max(0, config.service_floor - serviceAfter),
     underserved: rows
       .filter(
@@ -70,14 +81,18 @@ export function summarizePlan(
       .map((r) => r.id),
     stock: [...stock.values()].sort((a, b) => a.sku_id.localeCompare(b.sku_id)),
     constraint_violations: rows.filter(isApprovalBlocked).length,
-    method:
-      "deterministic marginal-pack heuristic; no global optimality guarantee",
+    method: learnedRankingActive
+      ? "learned store ranking combined with deterministic constrained marginal-pack allocation"
+      : "deterministic marginal-pack heuristic; no global optimality guarantee",
     allocation_coverage: rows.length
       ? rows.filter((r) => r.finalQty > 0).length / rows.length
       : 0,
     stockout_units_avoided: gain,
     impact_origin: "simulated",
-    ranking_label: "proxy_semi_synthetic",
+    ranking_label: learnedRankingActive
+      ? "databricks_expected_marginal_value"
+      : "fixed_margin_service_fallback",
+    learned_ranking_active: learnedRankingActive,
   };
 }
 
@@ -86,17 +101,19 @@ export function recommendPlan(
   config: ObjectiveConfig = defaults,
 ): WorkingRow[] {
   if (
-    ![config.margin_weight, config.service_weight].every(
+    ![config.margin_weight, config.service_weight, config.ranking_weight].every(
       (v) => Number.isFinite(v) && v >= 0,
     ) ||
-    Math.abs(config.margin_weight + config.service_weight - 1) > 1e-8
+    Math.abs(
+      config.margin_weight + config.service_weight + config.ranking_weight - 1,
+    ) > 1e-8
   )
     throw new Error("Invalid objective weights");
   const rows = base.map((r) => ({
     ...r,
     finalQty: 0,
     systemRecommendedQty: 0,
-    priorityScore: 0,
+    priorityScore: r.rankingScore ?? 0,
     constraintAdjustments: [] as string[],
     comment: "",
     manualOverride: false,
@@ -108,6 +125,21 @@ export function recommendPlan(
     0,
   );
   const serviceTotal = rows.reduce((s, r) => s + shortage(r), 0);
+  const learnedRankingActive = rows.some(
+    (row) =>
+      typeof row.rankingScore === "number" &&
+      Number.isFinite(row.rankingScore) &&
+      row.rankingScore > 0,
+  );
+  const activeWeight = learnedRankingActive
+    ? 1
+    : config.margin_weight + config.service_weight;
+  const rankingTotal = learnedRankingActive
+    ? rows.reduce(
+        (sum, row) => sum + shortage(row) * Math.max(0, row.rankingScore ?? 0),
+        0,
+      )
+    : 0;
   const dc = new Map<string, number>(),
     cats = new Map<string, number>(),
     receiving = new Map<string, number>();
@@ -174,11 +206,16 @@ export function recommendPlan(
       const units = Math.min(qty, Math.max(0, need - q));
       if (units <= 0) break;
       const score =
-        config.margin_weight *
+        (config.margin_weight / activeWeight) *
           (marginTotal
             ? (units * Math.max(0, r.sellingPrice - r.unitCost)) / marginTotal
             : 0) +
-        config.service_weight * (serviceTotal ? units / serviceTotal : 0);
+        (config.service_weight / activeWeight) *
+          (serviceTotal ? units / serviceTotal : 0) +
+        (learnedRankingActive ? config.ranking_weight : 0) *
+          (rankingTotal
+            ? (units * Math.max(0, r.rankingScore ?? 0)) / rankingTotal
+            : 0);
       packs.push({
         row: r,
         qty,
@@ -240,8 +277,9 @@ export function recommendPlan(
     cats.set(key, (cats.get(key) ?? 0) + p.qty);
     receiving.set(r.storeId, (receiving.get(r.storeId) ?? 0) + p.qty);
     spent += p.qty * r.unitCost;
-    r.reasonCode =
-      "Forecast shortage; normalized margin/service marginal-pack priority; available DC stock and capacity respected";
+    r.reasonCode = learnedRankingActive
+      ? "AI forecast shortage; learned store priority plus margin/service value; available DC stock and capacity respected"
+      : "Forecast shortage; normalized margin/service marginal-pack priority; available DC stock and capacity respected";
     r.priorityScore = (r.priorityScore ?? 0) + p.score;
   }
   const result = recalculateRows(

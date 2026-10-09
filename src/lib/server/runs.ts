@@ -173,10 +173,14 @@ export async function executeRun(id: string) {
         }
       }
       const base = loaded.rows.map((r) => {
+        const databricksPrediction =
+          (run.source ?? inferDataSource(run.snapshot)) ===
+            "databricks-sportswear" &&
+          r.dataOrigin === "databricks_ai_serving_v3";
         const valid =
           r.forecastEligible !== false &&
-          artifactReady &&
-          registry.champion === r.modelVersion &&
+          (databricksPrediction ||
+            (artifactReady && registry.champion === r.modelVersion)) &&
           r.modelForecast !== undefined &&
           Number.isFinite(r.modelForecast) &&
           r.modelForecast >= 0;

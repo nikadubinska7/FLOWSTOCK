@@ -55,6 +55,11 @@ const defaultFilters: Filters = {
 
 const initialDataSources: DataSourceSummary[] = [
   {
+    id: "databricks-sportswear", label: "Databricks sportswear V3", kind: "api", status: "not_connected", statusMessage: "Databricks connection not configured",
+    description: "Updated sportswear AI dataset: 70 stores and 720 SKUs.", defaultSnapshot: null, snapshots: [],
+    capabilities: {canPlan:false, canTestConnection:false, canSync:false}
+  },
+  {
     id: "sportswear-csv", label: "Sportswear CSV", kind: "csv", status: "ready", statusMessage: "Ready",
     description: "Original mock sportswear network: 70 stores and 1,200 SKUs.", defaultSnapshot: "latest",
     snapshots: [
@@ -615,18 +620,35 @@ export default function FlowstockApp() {
   }
 
   async function testSourceConnection(){
-    if(source!=="business-central")return;
-    setSourceActionLoading(true);setMessage("Testing the Business Central connection and discovering available data…");
+    if(source!=="business-central"&&source!=="databricks-sportswear")return;
+    const label=source==="business-central"?"Business Central":"Databricks";
+    setSourceActionLoading(true);setMessage(`Testing the ${label} connection…`);
     try{
-      const response=await fetch("/api/v1/data-sources/business-central/test",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
-      const result=await response.json();if(!response.ok)throw new Error(result.error?.message??"Business Central connection failed");
+      const response=await fetch(`/api/v1/data-sources/${source}/test`,{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
+      const result=await response.json();if(!response.ok)throw new Error(result.error?.message??`${label} connection failed`);
       const catalogResponse=await fetch("/api/v1/data-sources",{cache:"no-store"});
       if(catalogResponse.ok)setDataSources(((await catalogResponse.json()) as {sources:DataSourceSummary[]}).sources);
-      const available=(result.endpoints as {available:boolean}[]).filter(endpoint=>endpoint.available).length;
-      const range=result.itemLedgerDateRange?.earliest&&result.itemLedgerDateRange?.latest?` Item ledger dates: ${result.itemLedgerDateRange.earliest} to ${result.itemLedgerDateRange.latest}.`:"";
-      const recent=typeof result.recent90DayLedger?.recordCount==="number"?` Latest 90-day ledger window contains ${result.recent90DayLedger.recordCount.toLocaleString()} entries.`:"";
-      setMessage(`Connected to ${result.environment} · ${result.company.name}. ${available} standard endpoints available.${range}${recent}`);
-    }catch(error){setMessage(error instanceof Error?error.message:"Business Central connection failed");}
+      if(source==="databricks-sportswear")setMessage(`Connected to Databricks as ${result.principal}. Published snapshot: ${result.snapshot.snapshot_id}.`);
+      else{
+        const available=(result.endpoints as {available:boolean}[]).filter(endpoint=>endpoint.available).length;
+        const range=result.itemLedgerDateRange?.earliest&&result.itemLedgerDateRange?.latest?` Item ledger dates: ${result.itemLedgerDateRange.earliest} to ${result.itemLedgerDateRange.latest}.`:"";
+        const recent=typeof result.recent90DayLedger?.recordCount==="number"?` Latest 90-day ledger window contains ${result.recent90DayLedger.recordCount.toLocaleString()} entries.`:"";
+        setMessage(`Connected to ${result.environment} · ${result.company.name}. ${available} standard endpoints available.${range}${recent}`);
+      }
+    }catch(error){setMessage(error instanceof Error?error.message:`${label} connection failed`);}
+    finally{setSourceActionLoading(false);}
+  }
+
+  async function syncSource(){
+    if(source!=="databricks-sportswear")return;
+    setSourceActionLoading(true);setMessage("Synchronizing and validating the Databricks AI planning snapshot…");
+    try{
+      const response=await fetch("/api/v1/data-sources/databricks-sportswear/sync",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
+      const result=await response.json();if(!response.ok)throw new Error(result.error?.message??"Databricks synchronization failed");
+      const catalogResponse=await fetch("/api/v1/data-sources",{cache:"no-store"});
+      if(catalogResponse.ok)setDataSources(((await catalogResponse.json()) as {sources:DataSourceSummary[]}).sources);
+      setSnapshot(result.snapshotId);await refresh(source,result.snapshotId);
+    }catch(error){setMessage(error instanceof Error?error.message:"Databricks synchronization failed");}
     finally{setSourceActionLoading(false);}
   }
 
@@ -900,7 +922,7 @@ export default function FlowstockApp() {
             <>
               <KpiPanel title="Current State" current={currentKpis} simulation={simulationKpis} />
               <KpiPanel title="Simulation" current={currentKpis} simulation={simulationKpis} />
-              <RecommendedPlan loading={loading} onRun={runPlan} onReject={rejectPlan} summary={planId ? summarizePlan(rows) : null} active={Boolean(planId)} source={source} onSource={changeSource} sources={dataSources} snapshot={snapshot} onSnapshot={changeSnapshot} onTestConnection={testSourceConnection} sourceActionLoading={sourceActionLoading} />
+              <RecommendedPlan loading={loading} onRun={runPlan} onReject={rejectPlan} summary={planId ? summarizePlan(rows) : null} active={Boolean(planId)} source={source} onSource={changeSource} sources={dataSources} snapshot={snapshot} onSnapshot={changeSnapshot} onTestConnection={testSourceConnection} onSync={syncSource} sourceActionLoading={sourceActionLoading} />
               <TableFilters
                 filters={filters}
                 stores={stores}

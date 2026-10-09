@@ -13,6 +13,7 @@ export function RecommendedPlan({
   snapshot,
   onSnapshot,
   onTestConnection,
+  onSync,
   sourceActionLoading,
 }: {
   loading: boolean;
@@ -26,6 +27,7 @@ export function RecommendedPlan({
   snapshot: string;
   onSnapshot: (s: string) => void;
   onTestConnection: () => void;
+  onSync: () => void;
   sourceActionLoading: boolean;
 }) {
   const selectedSource = sources.find((item) => item.id === source);
@@ -106,10 +108,13 @@ export function RecommendedPlan({
             </button>
             <button
               type="button"
-              disabled={!selectedSource.capabilities.canSync}
+              onClick={onSync}
+              disabled={
+                sourceActionLoading || !selectedSource.capabilities.canSync
+              }
               className="rounded-lg border border-white/10 px-3 py-1.5 text-cockpit-muted disabled:cursor-not-allowed disabled:opacity-45"
             >
-              Sync data
+              {sourceActionLoading ? "Working…" : "Sync data"}
             </button>
           </>
         ) : null}
@@ -123,6 +128,19 @@ export function RecommendedPlan({
           </button>
         ) : null}
       </div>
+      {source === "databricks-sportswear" ? (
+        <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-wide">
+          <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-emerald-200">
+            AI demand forecast
+          </span>
+          <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-emerald-200">
+            AI store ranking
+          </span>
+          <span className="rounded-full border border-blue-300/20 bg-blue-400/10 px-3 py-1 text-blue-200">
+            Automated orchestration
+          </span>
+        </div>
+      ) : null}
       {summary ? (
         <div className="mt-5 grid gap-3 sm:grid-cols-4 text-sm">
           <div>
@@ -147,8 +165,9 @@ export function RecommendedPlan({
           <div>
             Objective weights
             <p>
-              Margin {summary.config.margin_weight * 100}% · service{" "}
-              {summary.config.service_weight * 100}%
+              {summary.learned_ranking_active
+                ? `Margin ${summary.config.margin_weight * 100}% · service ${summary.config.service_weight * 100}% · AI ranking ${summary.config.ranking_weight * 100}%`
+                : "Margin 50% · service 50% · AI ranking unavailable"}
             </p>
             <p>{summary.config.version}</p>
           </div>

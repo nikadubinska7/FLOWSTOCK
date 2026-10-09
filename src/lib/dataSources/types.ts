@@ -1,5 +1,8 @@
 export type DataSourceId =
-  "sportswear-csv" | "grocery-research" | "business-central";
+  | "sportswear-csv"
+  | "databricks-sportswear"
+  | "grocery-research"
+  | "business-central";
 
 export type DataSourceStatus =
   "ready" | "configured" | "connected" | "not_connected";

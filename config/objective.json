@@ -1,1 +1,10 @@
-{"version":"balanced-v1","margin_weight":0.5,"service_weight":0.5,"service_floor":0.9,"budget":null,"horizon_days":14,"tie_breaker":"store_id then sku_id lexical ascending"}
+{
+  "version": "ai-balanced-v2",
+  "margin_weight": 0.4,
+  "service_weight": 0.4,
+  "ranking_weight": 0.2,
+  "service_floor": 0.9,
+  "budget": null,
+  "horizon_days": 14,
+  "tie_breaker": "learned ranking, then store_id and sku_id lexical ascending"
+}

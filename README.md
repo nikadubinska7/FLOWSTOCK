@@ -2,7 +2,7 @@
 
 Flowstock is a working, local web prototype for planning DC-to-store replenishment across a sportswear store network. A planner generates **one recommended plan**, reviews its expected commercial impact, edits quantities, approves shipments and advances to the next simulated day.
 
-**Current status — 6 October 2026:** the sportswear workflow works end to end. Recommendations use transparent deterministic allocation and the supplied mock forecasts. A separate Databricks study now includes frozen baselines, Spark ML, Elastic Net, AdaBoost and PyTorch experiments, but no candidate has met the sportswear promotion target. Optional grocery forecasting research, model governance and integration APIs are also implemented. This is an AI Consultancy Bootcamp proof of concept, not a production inventory system.
+**Current status — 9 October 2026:** the sportswear planning, approval, shipping and next-day workflow works end to end. The original V2 dataset could not support the requested store-SKU accuracy, so the project owner authorized a new synthetic V3 dataset with stronger observable retail signals. A Databricks pipeline now generates the V3 weekly history, trains a demand forecast and a separate store-ranking model, applies chronological holdout gates, records MLflow evidence and publishes a versioned snapshot for Flowstock. The application connector and nightly orchestration endpoint are implemented; V3 metrics remain pending until the notebook is executed in the workspace. This is an AI Consultancy Bootcamp proof of concept, not a production inventory system.
 
 ## 1. Run locally
 
@@ -49,20 +49,21 @@ The default network has:
 
 Flowstock now separates the **data source** from the **snapshot**. Each source owns its latest package, generated planning days and run history, so switching sources cannot make one dataset appear as the latest package for another.
 
-| Data source | Current state |
-|---|---|
-| Sportswear CSV | Ready; full planning, approval, shipping and next-day loop. |
+| Data source                | Current state                                                                                                                                                                          |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sportswear CSV             | Ready; full planning, approval, shipping and next-day loop.                                                                                                                            |
+| Databricks sportswear V3   | Connector implemented. V3 notebook execution, credential configuration and first synchronized snapshot are still required.                                                             |
 | Microsoft Business Central | Read-only Production connection verified for CRONUS USA, Inc.; published location-level ledger fields were found, but warehouse activity is too sparse for direct store replenishment. |
-| Grocery research CSV | Ready as an optional research fixture, isolated from sportswear outputs. |
+| Grocery research CSV       | Ready as an optional research fixture, isolated from sportswear outputs.                                                                                                               |
 
 The snapshot selector then offers snapshots belonging to the selected source:
 
-| Snapshot | Purpose |
-|---|---|
-| Latest planning day | Default; loads the latest generated package, or the corrected sportswear starting package when no next day exists. |
-| Original sportswear · 70 stores · 1,200 SKUs | Starts from the initial sportswear data with the documented mock capacity corrections. |
-| Grocery demo · reference dataset | Small independent synthetic fixture: 8 stores × 36 products. |
-| Grocery research data · model version | Locally prepared historical research package, available after importing and training. |
+| Snapshot                                     | Purpose                                                                                                            |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Latest planning day                          | Default; loads the latest generated package, or the corrected sportswear starting package when no next day exists. |
+| Original sportswear · 70 stores · 1,200 SKUs | Starts from the initial sportswear data with the documented mock capacity corrections.                             |
+| Grocery demo · reference dataset             | Small independent synthetic fixture: 8 stores × 36 products.                                                       |
+| Grocery research data · model version        | Locally prepared historical research package, available after importing and training.                              |
 
 Planning API requests now carry both `source` and `snapshot`. Older snapshot-only clients remain supported and are assigned to their historical source automatically. Business Central cannot generate a plan until its API adapter has synchronized a validated local snapshot. See the [Business Central discovery report](docs/business_central_discovery.md).
 
@@ -104,12 +105,12 @@ The table currently renders the first **350 matching rows** for usability. Filte
 
 ## 4. What the KPIs mean
 
-| KPI | Current State | Simulation |
-|---|---|---|
-| Inventory value | Store stock on hand + in-transit stock, valued at unit cost. | The same stock plus proposed Final Qty, valued at cost. |
+| KPI             | Current State                                                  | Simulation                                                                     |
+| --------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Inventory value | Store stock on hand + in-transit stock, valued at unit cost.   | The same stock plus proposed Final Qty, valued at cost.                        |
 | Lost sales risk | Value of unmet forecast demand over 14 days, at selling price. | Remaining unmet demand after the proposed shipment's recoverable contribution. |
-| OOS risk | Unfulfilled forecast units ÷ total forecast units. | The same demand-weighted measure after replenishment. |
-| DC free stock | Available DC stock, counted once per SKU. | Available DC stock less the plan's allocations. |
+| OOS risk        | Unfulfilled forecast units ÷ total forecast units.             | The same demand-weighted measure after replenishment.                          |
+| DC free stock   | Available DC stock, counted once per SKU.                      | Available DC stock less the plan's allocations.                                |
 
 **OOS risk is not the percentage of SKUs physically out of stock.** Inventory value is the store/transit position, not total network inventory or a claim of reduced working capital. The new shipment cannot recover sales already lost before delivery. The prototype assumes uniform demand over the horizon and treats existing aggregate in-transit stock as available.
 
@@ -131,13 +132,13 @@ For example, a SKU with capacity 7, stock 5 and pack size 6 has room for only 2 
 
 These are simulated outputs from the corrected initial package with default settings and no manual edits:
 
-| Measure | Current | Recommended plan |
-|---|---:|---:|
-| Inventory value | €16,786,591 | €17,660,569 |
-| Lost sales risk | €1,613,132 | €799,042 |
-| OOS risk | 17.7% | 8.7% |
-| DC free stock | 433,498 units | 400,086 units |
-| New replenishment | 0 | 33,412 units |
+| Measure           |       Current | Recommended plan |
+| ----------------- | ------------: | ---------------: |
+| Inventory value   |   €16,786,591 |      €17,660,569 |
+| Lost sales risk   |    €1,613,132 |         €799,042 |
+| OOS risk          |         17.7% |             8.7% |
+| DC free stock     | 433,498 units |    400,086 units |
+| New replenishment |             0 |     33,412 units |
 
 The plan improves 6,299 rows, with projected recovered revenue of €814,090, recovered margin of €456,289 and zero shipment constraint violations. Of 4,832 high-current-risk rows, 3,102 receive a recommendation and 1,730 remain at zero for stated reasons. These figures are not realized sales, measured profit or proven client ROI.
 
@@ -147,14 +148,14 @@ The active method is a **deterministic greedy allocation in complete packs**. It
 
 Defaults in [`config/objective.json`](config/objective.json):
 
-| Setting | Value |
-|---|---|
-| Objective version | `balanced-v1` |
-| Margin / service weights | 50% / 50% |
-| Service target | 90% |
-| Forecast horizon | 14 days |
-| Budget | None configured |
-| Tie-breaks | Store ID, SKU ID, then pack ordinal |
+| Setting                  | Value                               |
+| ------------------------ | ----------------------------------- |
+| Objective version        | `balanced-v1`                       |
+| Margin / service weights | 50% / 50%                           |
+| Service target           | 90%                                 |
+| Forecast horizon         | 14 days                             |
+| Budget                   | None configured                     |
+| Tie-breaks               | Store ID, SKU ID, then pack ordinal |
 
 Packs contributing towards the service target receive priority, followed by the weighted marginal score. The plan reports unmet service instead of bypassing constraints. Change the configuration version when changing its settings; this preserves the run's recorded objective.
 
@@ -214,9 +215,9 @@ The verified import contains 70 stores, 556 products and 765,810 rows from the p
 
 Latest recorded held-out evidence:
 
-| Forecast metric | ML candidate | Seasonal baseline | Moving average |
-|---|---:|---:|---:|
-| WAPE — lower is better | 22.31% | 20.78% | 20.34% |
+| Forecast metric        | ML candidate | Seasonal baseline | Moving average |
+| ---------------------- | -----------: | ----------------: | -------------: |
+| WAPE — lower is better |       22.31% |            20.78% |         20.34% |
 
 The candidate underperforms both baselines and remains unpromoted. Proxy ranking NDCG@5 is approximately 0.9980 versus 0.9949 for its baseline; this measures a synthetic proxy, not actual allocation profit. Only 5,015 uncensored complete training examples remained after exclusions, a substantial limitation. See [evaluation results](docs/evaluation_results.json), [model card](docs/model_card.md) and [data card](docs/data_card_freshretailnet.md).
 
@@ -228,16 +229,16 @@ This study is deliberately separate from the web application's committed seed da
 
 #### Dataset and evaluation boundary
 
-| Item | Recorded value |
-|---|---:|
-| Network | 1 DC, 70 stores, 720 SKUs |
-| Fixed assortment | 34,268 ranged store-SKU combinations |
-| Development period | 1 July 2024–30 June 2026 |
-| Daily development rows | 25,015,640 |
-| Sealed evaluation period | 1 July–28 September 2026 |
-| Sealed daily rows | 3,084,120 |
-| Databricks bundle | 171 files in 24 monthly partitions |
-| Raw Delta tables | 25 |
+| Item                     |                       Recorded value |
+| ------------------------ | -----------------------------------: |
+| Network                  |            1 DC, 70 stores, 720 SKUs |
+| Fixed assortment         | 34,268 ranged store-SKU combinations |
+| Development period       |             1 July 2024–30 June 2026 |
+| Daily development rows   |                           25,015,640 |
+| Sealed evaluation period |             1 July–28 September 2026 |
+| Sealed daily rows        |                            3,084,120 |
+| Databricks bundle        |   171 files in 24 monthly partitions |
+| Raw Delta tables         |                                   25 |
 
 The uploaded bundle passed file-count and SHA-256 checks. It excludes generator code, private truth fields and sealed actual outcomes. The 90-day sealed period remains unread and unscored. The April–June internal holdout was used for the frozen baseline and first GBT evaluation; later candidates are selected only on the development tuning split and must not be treated as final validation results.
 
@@ -245,24 +246,24 @@ WAPE is `sum(abs(actual - forecast)) / sum(actual)`. Lower is better. Screens so
 
 #### Experiment log
 
-| Step | Work completed | Result and decision |
-|---:|---|---|
-| 1–8 | Defined the synthetic sportswear blueprint, masters, operational history, validation rules and export bundle. | Built a checksum-validated, pre-backtest bundle with fixed assortment and a sealed future period. |
-| 9 | Uploaded and verified the V2 bundle in Databricks. | 171 files extracted; recorded ZIP SHA-256; no sealed outcomes opened. |
-| 10 | Loaded the raw bundle. | Created 25 Delta tables with 25,015,640 development rows. |
-| 11 | Built leakage-controlled daily demand features and the feature contract. | 25,015,640 feature rows; 22,572,215 eligible labelled rows; 519,242 censored targets; 69 feature columns; 55 approved inputs. |
-| 12 | Froze simple 28-day baselines and corrected the evaluation grain from daily diagnostics to the business horizon. | V1 was rejected as too weak: all-store WAPE 0.6455 and high-volume store-SKU WAPE 0.4959. V1 cleanup removed 35 tables and one bundle path while preserving the raw volume. |
-| 12B–12C | Rebuilt and evaluated V2 at store-SKU and network-SKU level. | Balanced blend all-store WAPE 0.5200; high-volume store-SKU WAPE 0.3979; high-volume network-SKU seasonal WAPE 0.0860. The top 20% comprised 144 SKUs, 43.3% of units, with a 1,280-unit trailing-180-day threshold. The large gap between network and store WAPE points to store allocation as the main problem. |
-| 13 | Created 28-day supervised examples. | 19 development origins; 1,850,472 examples; 1,332,201 model-eligible. Internal holdout: 102,804 examples, 74,575 complete. Approved inputs: 68. Sealed access: 0. |
-| 14 | Trained the first Spark GBT residual model. | Internal WAPE 0.4866 versus 0.5200 baseline: 6.4% relative improvement. High-volume store WAPE 0.3691; high-volume network WAPE worsened from 0.0998 to 0.1273. Passed the minimal non-regression check but missed the business target. |
-| 15 | Added hierarchical history features and removed planning-only capacity/replenishment fields from the demand model. | 1,953,276 output rows; 48,810 tuning examples, 48,791 eligible; 74,575 internal examples retained; 98.9% long-history coverage; 85 approved inputs; 8 planning-only fields excluded. |
-| 16 | Tuned a hierarchical residual/reconciliation model on the development tuning origin. | Selected residual weight 1.00 and reconciliation weight 0.50. Store WAPE 0.4599 and network WAPE 0.0982 versus 0.5005 history anchor: 8.1% relative tuning improvement. |
-| 17 | Screened AdaBoost and Elastic Net, as suggested by the teacher. | Elastic Net grid: three mixing values × two regularization values. Best was 0.50 / 0.010 with WAPE 0.4502, a 10.0% tuning improvement. Best AdaBoost was about 0.4803 on a deterministic 154,466-row sample. Neither met the target. |
-| 18 | Screened three PyTorch embedding residual MLPs on an NVIDIA A10G. | 1,185,804 training rows; 48,791 tuning rows; 24 categorical and 61 numeric inputs. The `256×128` candidate reached WAPE 0.4331 and remained the best comparable development result. Removing early stopping and running 40 epochs did not improve it; later epochs flattened or worsened. |
-| 19 | Ran the store-allocation attainability diagnostic using only the development tuning origin. | History anchor WAPE 0.5005. Best feasible top-down candidate was seasonal network total + 12-block store share at 0.4595. Even a perfect network-SKU total + best lagged store share produced 0.4452, while a known total + perfect future store share produced 0.1022. Historical store shares are the primary limit. Internal and sealed access: 0. |
-| 20 | Ran a two-stage dynamic store-share GPU screen using development data only. | Best candidate: `384×192×96`, epoch 10 after all 24 epochs ran, with a 75% anchor / 25% seasonal network total. Oracle-total allocation WAPE was 0.4236 and feasible WAPE was 0.4375: 12.6% better than the 0.5005 history anchor, but slightly worse than Step 18's 0.4331 and well above the 0.35 target. Internal and sealed access: 0. |
-| 21 | Ran a development-only stochastic noise-ceiling audit before training another architecture. | Across 48,791 store-SKU/28-day tuning groups, the optimistic Poisson noise-floor WAPE was 0.4014, equivalent to 59.9% on the `1 - WAPE` display. No tested store-SKU segment had an optimistic floor at or below WAPE 0.20. Internal validation and sealed access: 0. |
-| 22 | Ran one final WAPE-aligned model trial at the project owner's request. | The direct-MAE `384×192×96` candidate was best within Step 22: raw WAPE 0.4341 and calibrated WAPE 0.4340. It did not beat Step 18 at 0.4331. Step 18 was selected as the final development winner, the 80% target was not met, and the store-SKU model-performance search was closed. Internal and sealed access: 0. |
+|    Step | Work completed                                                                                                     | Result and decision                                                                                                                                                                                                                                                                                                                                   |
+| ------: | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|     1–8 | Defined the synthetic sportswear blueprint, masters, operational history, validation rules and export bundle.      | Built a checksum-validated, pre-backtest bundle with fixed assortment and a sealed future period.                                                                                                                                                                                                                                                     |
+|       9 | Uploaded and verified the V2 bundle in Databricks.                                                                 | 171 files extracted; recorded ZIP SHA-256; no sealed outcomes opened.                                                                                                                                                                                                                                                                                 |
+|      10 | Loaded the raw bundle.                                                                                             | Created 25 Delta tables with 25,015,640 development rows.                                                                                                                                                                                                                                                                                             |
+|      11 | Built leakage-controlled daily demand features and the feature contract.                                           | 25,015,640 feature rows; 22,572,215 eligible labelled rows; 519,242 censored targets; 69 feature columns; 55 approved inputs.                                                                                                                                                                                                                         |
+|      12 | Froze simple 28-day baselines and corrected the evaluation grain from daily diagnostics to the business horizon.   | V1 was rejected as too weak: all-store WAPE 0.6455 and high-volume store-SKU WAPE 0.4959. V1 cleanup removed 35 tables and one bundle path while preserving the raw volume.                                                                                                                                                                           |
+| 12B–12C | Rebuilt and evaluated V2 at store-SKU and network-SKU level.                                                       | Balanced blend all-store WAPE 0.5200; high-volume store-SKU WAPE 0.3979; high-volume network-SKU seasonal WAPE 0.0860. The top 20% comprised 144 SKUs, 43.3% of units, with a 1,280-unit trailing-180-day threshold. The large gap between network and store WAPE points to store allocation as the main problem.                                     |
+|      13 | Created 28-day supervised examples.                                                                                | 19 development origins; 1,850,472 examples; 1,332,201 model-eligible. Internal holdout: 102,804 examples, 74,575 complete. Approved inputs: 68. Sealed access: 0.                                                                                                                                                                                     |
+|      14 | Trained the first Spark GBT residual model.                                                                        | Internal WAPE 0.4866 versus 0.5200 baseline: 6.4% relative improvement. High-volume store WAPE 0.3691; high-volume network WAPE worsened from 0.0998 to 0.1273. Passed the minimal non-regression check but missed the business target.                                                                                                               |
+|      15 | Added hierarchical history features and removed planning-only capacity/replenishment fields from the demand model. | 1,953,276 output rows; 48,810 tuning examples, 48,791 eligible; 74,575 internal examples retained; 98.9% long-history coverage; 85 approved inputs; 8 planning-only fields excluded.                                                                                                                                                                  |
+|      16 | Tuned a hierarchical residual/reconciliation model on the development tuning origin.                               | Selected residual weight 1.00 and reconciliation weight 0.50. Store WAPE 0.4599 and network WAPE 0.0982 versus 0.5005 history anchor: 8.1% relative tuning improvement.                                                                                                                                                                               |
+|      17 | Screened AdaBoost and Elastic Net, as suggested by the teacher.                                                    | Elastic Net grid: three mixing values × two regularization values. Best was 0.50 / 0.010 with WAPE 0.4502, a 10.0% tuning improvement. Best AdaBoost was about 0.4803 on a deterministic 154,466-row sample. Neither met the target.                                                                                                                  |
+|      18 | Screened three PyTorch embedding residual MLPs on an NVIDIA A10G.                                                  | 1,185,804 training rows; 48,791 tuning rows; 24 categorical and 61 numeric inputs. The `256×128` candidate reached WAPE 0.4331 and remained the best comparable development result. Removing early stopping and running 40 epochs did not improve it; later epochs flattened or worsened.                                                             |
+|      19 | Ran the store-allocation attainability diagnostic using only the development tuning origin.                        | History anchor WAPE 0.5005. Best feasible top-down candidate was seasonal network total + 12-block store share at 0.4595. Even a perfect network-SKU total + best lagged store share produced 0.4452, while a known total + perfect future store share produced 0.1022. Historical store shares are the primary limit. Internal and sealed access: 0. |
+|      20 | Ran a two-stage dynamic store-share GPU screen using development data only.                                        | Best candidate: `384×192×96`, epoch 10 after all 24 epochs ran, with a 75% anchor / 25% seasonal network total. Oracle-total allocation WAPE was 0.4236 and feasible WAPE was 0.4375: 12.6% better than the 0.5005 history anchor, but slightly worse than Step 18's 0.4331 and well above the 0.35 target. Internal and sealed access: 0.            |
+|      21 | Ran a development-only stochastic noise-ceiling audit before training another architecture.                        | Across 48,791 store-SKU/28-day tuning groups, the optimistic Poisson noise-floor WAPE was 0.4014, equivalent to 59.9% on the `1 - WAPE` display. No tested store-SKU segment had an optimistic floor at or below WAPE 0.20. Internal validation and sealed access: 0.                                                                                 |
+|      22 | Ran one final WAPE-aligned model trial at the project owner's request.                                             | The direct-MAE `384×192×96` candidate was best within Step 22: raw WAPE 0.4341 and calibrated WAPE 0.4340. It did not beat Step 18 at 0.4331. Step 18 was selected as the final development winner, the 80% target was not met, and the store-SKU model-performance search was closed. Internal and sealed access: 0.                                 |
 
 Step 19 execution note: the first Cell 2 run on 6 October failed before producing diagnostic metrics because `.cache()` requested `PERSIST TABLE`, which Databricks Serverless Spark Connect does not support. Both persistence calls were removed and the corrected notebook completed on 8 October in about one minute. This compatibility failure did not access internal validation or sealed outcomes.
 
@@ -283,6 +284,29 @@ Step 22 execution note: the initial final comparison cell failed after training 
 Recovery correction: the first repair snippet assumed the original notebook variables were still active and failed with `NameError: CATALOG is not defined` after the Python session had been cleared or when run separately. The replacement recovery cell defines its imports, catalog, schema and table names explicitly. If the original Step 22 Python state has expired, its trained candidate existed only in memory because the failure occurred before persistence; in that case Step 22 must be rerun after recovering the historical Step 18 selection table.
 
 The subsequent standalone final-cell retry failed with `NameError: os is not defined`, confirming that the full Step 22 Python state had expired. Further one-variable repairs are inappropriate because the trained candidate, checkpoint inputs and comparison frames were also memory-resident. The Step 18 selection table has now been recovered, so the correct recovery is one complete Step 22 rerun on Serverless GPU; the corrected final comparison logic will then persist the result.
+
+### V3 AI delivery path — authorized dataset regeneration
+
+The V2 performance search above remains valid evidence about that dataset. On 9 October, the project owner authorized a new synthetic dataset because V2's sparse stochastic store-SKU demand had an optimistic WAPE floor near 0.40. V3 changes the data-generating assumptions transparently: stable store and product effects, smooth annual seasonality, known promotions, lifecycle, trend, retail-event weeks and small deterministic measurement noise. It retains all 70 stores, 720 SKUs and 34,268 ranged store-SKU combinations.
+
+The private Databricks notebook `15_build_v3_ai_platform.py` implements one gated pipeline:
+
+1. Generate 104 weekly observations per ranged store-SKU.
+2. Build lag, rolling-history, season, planned-promotion, store, product, service and margin features using information available at forecast time.
+3. Train a Spark GBT 28-day demand model and evaluate it on later calendar periods.
+4. Train a second Spark GBT model to rank stores by realized marginal demand value, using earlier periods for training and the later holdout for evaluation.
+5. Stop before publishing unless forecast holdout WAPE is at most 0.20, forecast improvement over moving average is at least 10%, and top-20% ranking value capture is at least 90%.
+6. Log parameters, models and metrics to MLflow and publish the `flowstock_app_*` Delta serving tables.
+
+These thresholds are acceptance gates, not recorded results. Results must be copied here only after a successful Databricks run. The app accepts the published `model_forecast` and `ranking_score` only from a validated Databricks V3 snapshot. Its constrained allocator combines the learned ranking with margin and service weights, while DC stock, packs, assortment, capacity and planner approval remain hard controls.
+
+The versioned APIs now include:
+
+- `POST /api/v1/data-sources/databricks-sportswear/test`
+- `POST /api/v1/data-sources/databricks-sportswear/sync`
+- `POST /api/v1/orchestration/nightly`
+
+The nightly endpoint synchronizes and validates the immutable snapshot, creates an idempotent recommended plan and records model-forecast and learned-ranking coverage. See [Databricks AI platform runbook](docs/databricks_ai_platform.md).
 
 ### Optional research commands
 
@@ -314,12 +338,13 @@ Model health provides metrics, artifact verification, approval/rejection, activa
 
 Monitoring can evaluate a referenced local outcome batch for forecast error, bias, interval coverage, fallback and segments. Without outcomes it reports insufficient evidence; no real post-deployment results are available.
 
-| API area | Main routes |
-|---|---|
-| Health and validation | `/api/v1/health`, `/api/v1/validate` |
-| Data/model jobs | `/api/v1/ingest`, `/api/v1/training`, `/api/v1/jobs/{id}` |
-| Planning and decisions | `/api/v1/runs`, `/api/v1/runs/{id}`, `/override`, `/decision`, `/shipping` under a run |
-| Model review and monitoring | `/api/v1/models`, `/api/v1/models/{id}`, `/api/v1/monitor` |
+| API area                    | Main routes                                                                                                           |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Health and validation       | `/api/v1/health`, `/api/v1/validate`                                                                                  |
+| Data/model jobs             | `/api/v1/ingest`, `/api/v1/training`, `/api/v1/jobs/{id}`, `/api/v1/data-sources/databricks-sportswear/test`, `/sync` |
+| AI orchestration            | `/api/v1/orchestration/nightly`                                                                                       |
+| Planning and decisions      | `/api/v1/runs`, `/api/v1/runs/{id}`, `/override`, `/decision`, `/shipping` under a run                                |
+| Model review and monitoring | `/api/v1/models`, `/api/v1/models/{id}`, `/api/v1/monitor`                                                            |
 
 The [OpenAPI specification](docs/openapi.json) and [n8n integration contract](docs/n8n_integration_contract.md) describe payloads, polling, errors, authentication and retries. **No n8n workflow, scheduler or external application connection is configured.** Legacy `/api/recommend` and `/api/approve` return 410. The old export/next-day endpoints are informational; use approved-run shipping and the automatic approval simulation loop.
 
@@ -327,23 +352,23 @@ Local browser use obtains a same-origin planner session. Administrator mutations
 
 ## 9. What is still missing
 
-| Area | Current limit / next work |
-|---|---|
-| Real operational data | Replace mock CSVs with validated ERP/POS/WMS feeds and reconciled stock/order balances. |
-| Business Central synchronization | Connection testing and standard endpoint discovery are implemented. Complete sales/purchase line extraction, solve location-SKU inventory access, define missing planning defaults and materialize a validated Flowstock snapshot. |
-| Capacity assumptions | Validate store/SKU/category capacities, receiving limits, case packs and delivery calendars with a planner. |
-| Sportswear forecasting | The store-SKU performance search is closed. Step 18's `256×128` PyTorch embedding residual MLP is the final development winner at WAPE 0.4331, or 56.7% on the `1 - WAPE` display. Step 22 reached 0.4340 and Elastic Net reached 0.4502. Step 21 estimated an optimistic stochastic floor of 0.4014, so the 80% target is not supportable at this grain. The winner has not been promoted through internal or sealed validation. |
-| Optimization | Benchmark the greedy allocator against a solver; add explicit holding-cost, logistics-cost and service trade-offs if required. Global optimality is not guaranteed. |
-| Arrival and inventory timing | Replace uniform demand and aggregate transit assumptions with dated arrivals and time-phased inventory/capacity calculations. The current capacity check does not assume sales will create space before delivery. |
-| Simulation realism | Add realistic demand uncertainty, calendar/promotion rollover, richer order states, returns and supply arrivals. Daily forecast adjustment is a simple simulation rule. |
-| Perishability | Grocery shelf-life metadata is descriptive; expiry, waste and substitution are not optimized. |
-| Business validation | Run a controlled pilot and measure realized service, inventory, margin and planner effort. Current improvements are simulated. |
-| Performance and usability | Optimize large snapshot transfer and rendering; add full table pagination/virtualization, richer filters and clearer dataset-specific history/forecast diagnostics. |
-| Durable operations | Add transactional persistence, robust recovery for interrupted jobs/partial approvals, backups and concurrent-user support. Local file locks are not a distributed queue. |
-| Production security | Add user accounts/SSO, roles, deployment hardening, credential management and tamper-resistant audit storage. |
-| Automation | Implement and test n8n workflows, scheduled refresh/training/monitoring and real outcome ingestion. APIs alone do not provide this automation. |
-| Deployment and delivery | Establish hosted deployment, CI checks, dependency maintenance and a release process. |
-| Capstone evidence | Complete client-specific discovery, baseline KPIs, costs/ROI assumptions, adoption and change-management plan, pilot evaluation and the final consultancy presentation. |
+| Area                             | Current limit / next work                                                                                                                                                                                                                                                                 |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Real operational data            | Replace mock CSVs with validated ERP/POS/WMS feeds and reconciled stock/order balances.                                                                                                                                                                                                   |
+| Business Central synchronization | Connection testing and standard endpoint discovery are implemented. Complete sales/purchase line extraction, solve location-SKU inventory access, define missing planning defaults and materialize a validated Flowstock snapshot.                                                        |
+| Capacity assumptions             | Validate store/SKU/category capacities, receiving limits, case packs and delivery calendars with a planner.                                                                                                                                                                               |
+| Sportswear forecasting           | V2 is closed with Step 18 at WAPE 0.4331. The authorized V3 regeneration/training/publishing notebook and app connector are implemented. Execute the notebook and record its chronological-holdout results; do not describe the V3 thresholds as achieved metrics before that run passes. |
+| Optimization                     | Benchmark the greedy allocator against a solver; add explicit holding-cost, logistics-cost and service trade-offs if required. Global optimality is not guaranteed.                                                                                                                       |
+| Arrival and inventory timing     | Replace uniform demand and aggregate transit assumptions with dated arrivals and time-phased inventory/capacity calculations. The current capacity check does not assume sales will create space before delivery.                                                                         |
+| Simulation realism               | Add realistic demand uncertainty, calendar/promotion rollover, richer order states, returns and supply arrivals. Daily forecast adjustment is a simple simulation rule.                                                                                                                   |
+| Perishability                    | Grocery shelf-life metadata is descriptive; expiry, waste and substitution are not optimized.                                                                                                                                                                                             |
+| Business validation              | Run a controlled pilot and measure realized service, inventory, margin and planner effort. Current improvements are simulated.                                                                                                                                                            |
+| Performance and usability        | Optimize large snapshot transfer and rendering; add full table pagination/virtualization, richer filters and clearer dataset-specific history/forecast diagnostics.                                                                                                                       |
+| Durable operations               | Add transactional persistence, robust recovery for interrupted jobs/partial approvals, backups and concurrent-user support. Local file locks are not a distributed queue.                                                                                                                 |
+| Production security              | Add user accounts/SSO, roles, deployment hardening, credential management and tamper-resistant audit storage.                                                                                                                                                                             |
+| Automation                       | The idempotent nightly Databricks sync-and-plan endpoint is implemented. Configure a scheduler and an authenticated planner notification, then exercise failure/retry monitoring.                                                                                                         |
+| Deployment and delivery          | Configure Databricks OAuth/warehouse settings and persistent storage, run the first synchronization and end-to-end smoke test, then deploy to the selected host.                                                                                                                          |
+| Capstone evidence                | Complete client-specific discovery, baseline KPIs, costs/ROI assumptions, adoption and change-management plan, pilot evaluation and the final consultancy presentation.                                                                                                                   |
 
 A failed or interrupted approval can leave a snapshot reserved while outputs are incomplete. Review the local audit and files before recovery; do not blindly delete locks or consumed-inventory records to retry. Approval is conservative about duplicates but is not an atomic database transaction.
 
@@ -395,5 +420,6 @@ Latest verified application checks: **30 TypeScript tests**, **6 Python tests**,
 - [Field mapping](docs/data_mapping.md) and [research data contract](docs/data_contract.json)
 - [Model card](docs/model_card.md) and [evaluation results](docs/evaluation_results.json)
 - [OpenAPI specification](docs/openapi.json) and [n8n contract](docs/n8n_integration_contract.md)
+- [Databricks AI platform runbook](docs/databricks_ai_platform.md)
 
 This README describes current behavior. Earlier briefs and research documents retain historical scope; the active default is sportswear with one recommended plan.

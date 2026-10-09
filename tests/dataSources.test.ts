@@ -15,6 +15,9 @@ describe("data source registry", () => {
     const businessCentral = sources.find(
       (source) => source.id === "business-central",
     );
+    const databricks = sources.find(
+      (source) => source.id === "databricks-sportswear",
+    );
 
     expect(sportswear?.status).toBe("ready");
     expect(sportswear?.defaultSnapshot).toBe("latest");
@@ -29,6 +32,8 @@ describe("data source registry", () => {
         canSync: false,
       },
     });
+    expect(databricks).toBeDefined();
+    expect(databricks?.description).toContain("720 SKUs");
   });
 
   it("keeps snapshots and generated packages within their source", async () => {
@@ -36,6 +41,9 @@ describe("data source registry", () => {
     expect(inferDataSource("demo")).toBe("grocery-research");
     expect(sourceRunsRoot("sportswear-csv")).not.toBe(
       sourceRunsRoot("grocery-research"),
+    );
+    expect(sourceRunsRoot("databricks-sportswear")).not.toBe(
+      sourceRunsRoot("sportswear-csv"),
     );
     await expect(
       resolveDataSnapshot("grocery-research", "sportswear"),

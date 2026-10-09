@@ -22,6 +22,11 @@ export const runsRoot =
 
 export function sourceRunsRoot(sourceId: DataSourceId): string {
   if (sourceId === "sportswear-csv") return runsRoot;
+  if (sourceId === "databricks-sportswear")
+    return (
+      process.env.FLOWSTOCK_DATABRICKS_RUNS_DIR ||
+      path.join(projectRoot, "data", "local", "databricks_sportswear_runs")
+    );
   if (sourceId === "grocery-research")
     return (
       process.env.FLOWSTOCK_GROCERY_RUNS_DIR ||

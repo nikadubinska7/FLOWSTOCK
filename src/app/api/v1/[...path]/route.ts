@@ -25,6 +25,11 @@ import {
   listDataSources,
 } from "@/lib/server/dataSources";
 import { testBusinessCentralConnection } from "@/lib/server/businessCentral";
+import {
+  syncDatabricksSnapshot,
+  testDatabricksConnection,
+} from "@/lib/server/databricks";
+import { orchestrateDatabricksPlanning } from "@/lib/server/orchestration";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 function object(x: unknown): Record<string, unknown> {
@@ -59,7 +64,10 @@ async function handle(req: NextRequest) {
         correlation_id,
       });
     const admin =
-      method === "POST" && ["models", "training", "ingest"].includes(p[0]);
+      method === "POST" &&
+      (["models", "training", "ingest"].includes(p[0]) ||
+        (p[0] === "data-sources" && p[2] === "sync") ||
+        p[0] === "orchestration");
     const actor = await authenticate(req, admin);
     const body = method === "POST" ? object(await req.json()) : {};
     let result: unknown;
@@ -105,6 +113,54 @@ async function handle(req: NextRequest) {
         recent90DayLedger: connection.recent90DayLedger,
         testedAt: connection.testedAt,
       };
+    } else if (
+      p[0] === "data-sources" &&
+      p[1] === "databricks-sportswear" &&
+      p[2] === "test" &&
+      method === "POST"
+    ) {
+      fields(body, []);
+      const connection = await testDatabricksConnection();
+      await writeState(
+        "data-sources/databricks-sportswear/connection.json",
+        connection,
+      );
+      await audit("databricks_connection_tested", actor.name, {
+        warehouseId: connection.warehouseId,
+        principal: connection.principal,
+        catalog: connection.catalog,
+        schema: connection.schema,
+        snapshot: connection.snapshot,
+        testedAt: connection.testedAt,
+      });
+      result = connection;
+    } else if (
+      p[0] === "data-sources" &&
+      p[1] === "databricks-sportswear" &&
+      p[2] === "sync" &&
+      method === "POST"
+    ) {
+      fields(body, []);
+      const synchronization = await syncDatabricksSnapshot();
+      await writeState(
+        "data-sources/databricks-sportswear/synchronization.json",
+        synchronization,
+      );
+      await audit("databricks_snapshot_synchronized", actor.name, {
+        snapshotId: synchronization.snapshotId,
+        runDate: synchronization.runDate,
+        rows: synchronization.rows,
+        manifest: synchronization.manifest,
+        syncedAt: synchronization.syncedAt,
+      });
+      result = synchronization;
+    } else if (
+      p[0] === "orchestration" &&
+      p[1] === "nightly" &&
+      method === "POST"
+    ) {
+      fields(body, []);
+      result = await orchestrateDatabricksPlanning(actor.name);
     } else if (p[0] === "runs" && !p[1] && method === "POST") {
       fields(body, ["source", "snapshot"]);
       const key = string(req.headers.get("idempotency-key"));
