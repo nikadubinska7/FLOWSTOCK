@@ -302,6 +302,8 @@ These thresholds are acceptance gates, not recorded results. Results must be cop
 
 V3 execution note — 9 October 2026, 21:25: the first Cell 2 run stopped before writing the weekly dataset because the notebook used Spark DataFrame caching. On Databricks Serverless, Spark Connect translated this into `PERSIST TABLE`, which that compute mode does not support. All five `.cache()` calls were removed from the V3 notebook. No training or evaluation result was produced by the failed run, and changing to GPU would not address this compatibility error. The corrected notebook continued on Serverless CPU. At 21:30, Cells 1 and 2 passed and `flowstock_v3_weekly_sales` was written with 3,563,872 rows: 104 weekly observations for each of the 34,268 ranged store-SKU pairs across 70 stores and 720 SKUs.
 
+V3 forecast execution note — 9 October 2026, 21:35: the first Cell 3 run reached model fitting and stopped because the second lag was unavailable on the earliest otherwise eligible row for each store-SKU. `VectorAssembler(handleInvalid="keep")` represented that null as `NaN`, which Spark GBT rejects. The feature contract now requires two complete historical weeks, verifies every numeric model input is finite before fitting and configures the assembler to reject invalid values explicitly. The failed fit produced no forecast metrics and did not publish a serving snapshot.
+
 The versioned APIs now include:
 
 - `POST /api/v1/data-sources/databricks-sportswear/test`
