@@ -278,6 +278,8 @@ This result changes the recommended KPI design. An 80% `1 - WAPE` display should
 
 Step 22 is the final authorized store-SKU performance trial before closing the search. The earlier neural screen optimized Smooth-L1 loss; Step 22 instead optimizes absolute error directly, which aligns with the WAPE numerator, and tests an auxiliary occurrence head for intermittent count demand. It runs all 24 epochs for three configurations and retains the best epoch, then calibrates only a global scale and near-zero cutoff on the frozen development-tuning split. The notebook will select the lowest comparable development-tuning WAPE whether that winner comes from Step 22 or an earlier trial. Preparing Step 22 does not change the Step 21 attainability conclusion and does not access internal validation or sealed outcomes.
 
+Step 22 execution note: the initial final comparison cell failed after training because the historical `flowstock_model_v2_neural_selection` table from Step 18 had been removed. No Step 22 result was lost and no internal-validation or sealed data was accessed. The final cell now checks for that table, falls back to the retained Step 18 candidate-results table, and uses the documented 0.4331 result only if neither historical table remains. Only the corrected comparison cell needs to be rerun; model retraining is unnecessary.
+
 ### Optional research commands
 
 ```bash
