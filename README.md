@@ -306,6 +306,8 @@ V3 forecast execution note — 9 October 2026, 21:35: the first Cell 3 run reach
 
 The corrected Cell 3 then passed on Serverless CPU. The Spark GBT forecast scored WAPE 0.0371 on 308,412 validation rows and WAPE 0.0457 on 274,144 strictly later holdout rows. The held-out `1 - WAPE` display was 95.4%. The non-ML four-week moving-average baseline scored WAPE 0.1174, so the AI model reduced weighted absolute error by 61.1% relative to that baseline. These are synthetic V3 results at the four-week store-SKU grain; `1 - WAPE` is a presentation transform rather than a universal accuracy measure. The forecast gates passed, while ranking and serving results remain pending.
 
+For the presentation comparison, private notebook `16_compare_v3_forecast_models.py` was created to evaluate Spark GBT, Spark ElasticNet and a PyTorch store/SKU embedding MLP on the same target, chronological splits and held-out rows. It also defines a separate legacy-business proxy: a non-personalized category demand rate learned from training history and multiplied by a fixed 0.65 availability factor to represent a conservative under-calling process. That proxy is expected to land in the requested 60–70% `1 - WAPE` display range, but it is not the same baseline as the stronger 88.3% store-SKU moving average above. The presentation must label it as a synthetic legacy proxy and show the moving-average benchmark as supporting context. Comparison results remain pending until the notebook runs; no target score is recorded as achieved in advance.
+
 The versioned APIs now include:
 
 - `POST /api/v1/data-sources/databricks-sportswear/test`
