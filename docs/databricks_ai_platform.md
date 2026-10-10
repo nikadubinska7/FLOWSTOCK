@@ -24,21 +24,23 @@ Acceptance gates:
 | Relative improvement over moving average             |    ≥ 10% |
 | Ranking top-20% value capture versus oracle ordering |    ≥ 90% |
 
-The forecast comparison has passed: the selected MLP scored held-out WAPE 0.0249 on 274,144 later rows. Spark GBT scored 0.0448, ElasticNet scored 0.0680 and the declared synthetic legacy proxy scored 0.3399 on those same rows. The ranking gate remains pending until the deployment notebook runs.
+The forecast comparison has passed: the selected MLP scored held-out WAPE 0.0249 on 274,144 later rows. Spark GBT scored 0.0448, ElasticNet scored 0.0680 and the declared synthetic legacy proxy scored 0.3399 on those same rows. The separate ranking GBT achieved 99.1% top-20% value capture and passed its 90% gate.
 
 ## First Databricks run
 
 1. Import the private notebook `databricks_notebooks/17_deploy_v3_mlp_ranking_serving.py`.
 2. Run Cells 1–2 on Serverless GPU Small. Wait for 1,248,949 training, 274,144 holdout and 34,268 planning predictions.
-3. Switch to Serverless CPU and run Cells 3–4. Wait for the ranking gate and `FLOWSTOCK V3 MLP + AI RANKING SNAPSHOT PUBLISHED`.
-4. Save the displayed ranking capture and serving result in `README.md`.
-5. Confirm these tables exist in `workspace.default`:
+3. Switch to Serverless CPU and run Cell 3. Serverless Spark model logging must use a Unity Catalog Volume temporary directory, currently `/Volumes/workspace/default/flowstock_raw/models/flowstock_v3_pytorch_embedding_mlp_20261010/mlflow_tmp`.
+4. If Cell 3 reaches the 99.1% ranking result and fails only at `mlflow.spark.log_model`, run the documented logging-only recovery. Do not retrain: the planning scores, pipeline and deployment metrics already exist.
+5. Run Cell 4 only after the complete ranking MLflow run exists. Wait for `FLOWSTOCK V3 MLP + AI RANKING SNAPSHOT PUBLISHED`.
+6. Save the displayed ranking capture and serving result in `README.md`.
+7. Confirm these tables exist in `workspace.default`:
    - `flowstock_v3_weekly_sales`
    - `flowstock_v3_forecast_model_comparison_ranked`
    - `flowstock_v3_deployment_metrics`
    - `flowstock_app_snapshot_manifest`
    - the 16 `flowstock_app_*` planning-contract tables
-6. Confirm the selected MLP checkpoint and ranking model exist below `/Volumes/workspace/default/flowstock_raw/models/`, and confirm the forecast and ranking MLflow runs exist under `/Shared/flowstock-v3-ai-platform`.
+8. Confirm the selected MLP checkpoint and ranking model exist below `/Volumes/workspace/default/flowstock_raw/models/`, and confirm the forecast and ranking MLflow runs exist under `/Shared/flowstock-v3-ai-platform`.
 
 ## Flowstock connection
 
