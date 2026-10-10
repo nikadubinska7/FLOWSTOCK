@@ -28,7 +28,10 @@ returns only service availability and does not expose application data.
 Set `NEXT_PUBLIC_FLOWSTOCK_V3_ONLY=1` for the hosted presentation build to show
 only Databricks Sportswear V3 and initialize the interface on that source. On a
 fresh persistent disk, the first refresh tests the Databricks connection,
-synchronizes the published V3 snapshot and then loads the workspace.
+synchronizes the published V3 snapshot and then loads the workspace. In this
+password-protected V3-only mode, an authenticated planner may run that narrowly
+scoped snapshot synchronization; model, training and orchestration mutations
+still require administrator authentication.
 
 ### Existing project
 

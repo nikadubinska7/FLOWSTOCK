@@ -63,8 +63,14 @@ async function handle(req: NextRequest) {
         version: "planning-v1",
         correlation_id,
       });
+    const v3OnlySynchronization =
+      process.env.NEXT_PUBLIC_FLOWSTOCK_V3_ONLY === "1" &&
+      p[0] === "data-sources" &&
+      p[1] === "databricks-sportswear" &&
+      p[2] === "sync";
     const admin =
       method === "POST" &&
+      !v3OnlySynchronization &&
       (["models", "training", "ingest"].includes(p[0]) ||
         (p[0] === "data-sources" && p[2] === "sync") ||
         p[0] === "orchestration");
