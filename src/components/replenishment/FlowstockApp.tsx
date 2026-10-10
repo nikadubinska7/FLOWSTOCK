@@ -909,7 +909,22 @@ export default function FlowstockApp() {
     try {
       await fetch("/api/session", { method: "POST" });
       void refreshHealth();
-      let effectiveSnapshot = selectedSnapshot;
+      const catalogResponse = await fetch("/api/v1/data-sources", {
+        cache: "no-store",
+      });
+      const catalog = catalogResponse.ok
+        ? ((await catalogResponse.json()) as {
+            sources: DataSourceSummary[];
+          }).sources
+        : dataSources;
+      if (catalogResponse.ok) setDataSources(catalog);
+      let effectiveSnapshot =
+        selectedSnapshot ||
+        catalog.find((item) => item.id === selectedSource)?.defaultSnapshot ||
+        "";
+      if (effectiveSnapshot !== selectedSnapshot) {
+        setSnapshot(effectiveSnapshot);
+      }
       if (selectedSource === "databricks-sportswear" && !effectiveSnapshot) {
         setMessage("Connecting to Databricks and synchronizing Sportswear V3…");
         const testResponse = await fetch(
@@ -943,14 +958,6 @@ export default function FlowstockApp() {
         effectiveSnapshot = syncResult.snapshotId;
         setSnapshot(effectiveSnapshot);
       }
-      const catalogResponse = await fetch("/api/v1/data-sources", {
-        cache: "no-store",
-      });
-      if (catalogResponse.ok)
-        setDataSources(
-          ((await catalogResponse.json()) as { sources: DataSourceSummary[] })
-            .sources,
-        );
       setPlanId("");
       const params = new URLSearchParams({
         source: selectedSource,
