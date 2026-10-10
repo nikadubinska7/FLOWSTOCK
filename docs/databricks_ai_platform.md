@@ -26,7 +26,7 @@ Acceptance gates:
 
 The forecast comparison has passed: the selected MLP scored held-out WAPE 0.0249 on 274,144 later rows. Spark GBT scored 0.0448, ElasticNet scored 0.0680 and the declared synthetic legacy proxy scored 0.3399 on those same rows. The separate ranking GBT achieved 99.1% top-20% value capture and passed its 90% gate.
 
-The deployment run completed on 10 October 2026. It logged both AI components and published the full `flowstock_app_*` contract under snapshot `2026-06-30`. The live connector test passed against warehouse `210b6909e8cdd1a4`, verifying 70 stores, 720 SKUs and 34,268 store-SKU rows. The first synchronization then materialized all 34,268 rows locally, and the application refresh endpoint returned nonzero Current State KPIs. First-plan generation and the remaining application smoke test are next.
+The deployment run completed on 10 October 2026. It logged both AI components and published the full `flowstock_app_*` contract under snapshot `2026-06-30`. The live connector test passed against warehouse `210b6909e8cdd1a4`, verifying 70 stores, 720 SKUs and 34,268 store-SKU rows. The operational snapshot was republished with heterogeneous stock cover after an audit found that uniform starting cover made its cost-value and retail-risk KPIs misleadingly similar. The corrected synchronization passed at 13.2% demand-weighted OOS, €16,821,234 inventory at cost and €4,890,743 retail revenue at risk. First-plan generation and the remaining application smoke test are next.
 
 ## First Databricks run
 
