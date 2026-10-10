@@ -4,7 +4,7 @@
 
 Flowstock V3 has three separate responsibilities:
 
-1. **AI demand forecast** — a Spark GBT model predicts the next 28 days for each ranged store-SKU from lagged sales and known-at-origin retail signals.
+1. **AI demand forecast** — the selected PyTorch store/SKU embedding MLP predicts the next 28 days for each ranged store-SKU from learned entity representations, lagged sales and known-at-origin retail signals.
 2. **AI store ranking** — a second Spark GBT model estimates marginal demand value for each store-SKU. The planner uses this score when DC stock is scarce.
 3. **AI orchestration** — a scheduled, idempotent API operation synchronizes the published Delta snapshot, validates the complete planning contract and creates one recommended plan.
 
@@ -24,19 +24,21 @@ Acceptance gates:
 | Relative improvement over moving average             |    ≥ 10% |
 | Ranking top-20% value capture versus oracle ordering |    ≥ 90% |
 
-These are target thresholds until a Databricks run produces evidence.
+The forecast comparison has passed: the selected MLP scored held-out WAPE 0.0249 on 274,144 later rows. Spark GBT scored 0.0448, ElasticNet scored 0.0680 and the declared synthetic legacy proxy scored 0.3399 on those same rows. The ranking gate remains pending until the deployment notebook runs.
 
 ## First Databricks run
 
-1. Import and run the private notebook `databricks_notebooks/15_build_v3_ai_platform.py` on Serverless compute.
-2. Wait for `FLOWSTOCK V3 AI PLATFORM PASSED`.
-3. Save the displayed forecast WAPE, baseline WAPE, relative improvement and ranking capture in `README.md`.
-4. Confirm these tables exist in `workspace.default`:
+1. Import the private notebook `databricks_notebooks/17_deploy_v3_mlp_ranking_serving.py`.
+2. Run Cells 1–2 on Serverless GPU Small. Wait for 1,248,949 training, 274,144 holdout and 34,268 planning predictions.
+3. Switch to Serverless CPU and run Cells 3–4. Wait for the ranking gate and `FLOWSTOCK V3 MLP + AI RANKING SNAPSHOT PUBLISHED`.
+4. Save the displayed ranking capture and serving result in `README.md`.
+5. Confirm these tables exist in `workspace.default`:
    - `flowstock_v3_weekly_sales`
-   - `flowstock_v3_model_metrics`
+   - `flowstock_v3_forecast_model_comparison_ranked`
+   - `flowstock_v3_deployment_metrics`
    - `flowstock_app_snapshot_manifest`
    - the 16 `flowstock_app_*` planning-contract tables
-5. Confirm the two Spark models are saved below `/Volumes/workspace/default/flowstock_raw/models/flowstock_v3_gbt_4w_20261009` and the MLflow run exists under `/Shared/flowstock-v3-ai-platform`.
+6. Confirm the selected MLP checkpoint and ranking model exist below `/Volumes/workspace/default/flowstock_raw/models/`, and confirm the forecast and ranking MLflow runs exist under `/Shared/flowstock-v3-ai-platform`.
 
 ## Flowstock connection
 

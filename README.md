@@ -310,6 +310,8 @@ For the presentation comparison, private notebook `16_compare_v3_forecast_models
 
 The first standalone Cell 6 attempt failed with `NameError: RESULTS_TABLE is not defined` because the GPU Python session state had expired. Cell 5 had already persisted the MLP checkpoint, prediction table and result row, so no training output was lost. The self-contained recovery restored its imports and table names, verified that the baseline and all three learned models existed, and persisted the ranked comparison successfully.
 
+Private deployment notebook `17_deploy_v3_mlp_ranking_serving.py` now implements the remaining path without modifying the completed comparison: load and verify the selected checkpoint, generate historical holdout and 34,268 planning-origin forecasts on GPU, log the forecast to MLflow, train and validate a separate marginal-value Spark GBT store-ranking model on CPU, publish the complete `flowstock_app_*` contract, and write the immutable snapshot manifest. Deployment results remain pending until those four cells run.
+
 The versioned APIs now include:
 
 - `POST /api/v1/data-sources/databricks-sportswear/test`
