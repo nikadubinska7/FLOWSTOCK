@@ -13,7 +13,8 @@
     "test:python": ".venv/bin/python -m unittest discover -s tests -p \"test_*.py\"",
     "test:browser": "playwright test",
     "demo:data": "python3 ml/grocery.py",
-    "share:gateway": "node scripts/share-proxy.mjs"
+    "share:gateway": "node scripts/share-proxy.mjs",
+    "start:render": "node scripts/render-start.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.475.0",

@@ -19,6 +19,12 @@ This is a time-limited review link, not permanent production hosting. Permanent
 hosting requires migrating `.flowstock` filesystem state to managed persistent
 storage.
 
+For Render, use `npm run start:render` as the start command. It runs Next.js on
+an internal loopback port and publishes the password-protected gateway on
+Render's assigned `PORT`. Attach the persistent disk at
+`/opt/render/project/src/.flowstock` and set the hosted secrets described in
+`.env.example`.
+
 ### Existing project
 
 Open Terminal in the project folder:
