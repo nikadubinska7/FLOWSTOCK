@@ -37,6 +37,15 @@ function upstreamHeaders(headers) {
 }
 
 const server = http.createServer((request, response) => {
+  if (request.url === "/healthz") {
+    response.writeHead(200, {
+      "Cache-Control": "no-store",
+      "Content-Type": "text/plain; charset=utf-8",
+    });
+    response.end("ok\n");
+    return;
+  }
+
   if (!authorized(request.headers)) {
     challenge(response);
     return;

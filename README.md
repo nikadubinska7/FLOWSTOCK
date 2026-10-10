@@ -23,7 +23,8 @@ For Render, use `npm run start:render` as the start command. It runs Next.js on
 an internal loopback port and publishes the password-protected gateway on
 Render's assigned `PORT`. Attach the persistent disk at
 `/opt/render/project/src/.flowstock` and set the hosted secrets described in
-`.env.example`.
+`.env.example`. Set Render's health check path to `/healthz`; that endpoint
+returns only service availability and does not expose application data.
 
 ### Existing project
 
