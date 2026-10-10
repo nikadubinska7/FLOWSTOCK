@@ -6,6 +6,19 @@ Flowstock is a working, local web prototype for planning DC-to-store replenishme
 
 ## 1. Run locally
 
+### Temporary protected sharing
+
+The full local application can be shared for a live review through an HTTPS
+tunnel while the Mac and Flowstock server remain running. Start the protected
+gateway with `FLOWSTOCK_SHARE_PASSWORD` set to a private value of at least 12
+characters, then point the tunnel at port `3010`. The gateway requires browser
+authentication and removes its Basic Authorization header before forwarding
+requests to Flowstock, allowing the existing local planner session to work.
+
+This is a time-limited review link, not permanent production hosting. Permanent
+hosting requires migrating `.flowstock` filesystem state to managed persistent
+storage.
+
 ### Existing project
 
 Open Terminal in the project folder:

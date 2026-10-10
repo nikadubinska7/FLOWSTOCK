@@ -12,7 +12,8 @@
     "format:check": "prettier --check src/lib/server src/lib/domain/plan.ts src/lib/domain/constraints.ts src/app/api/v1 src/components/replenishment/RecommendedPlan.tsx src/components/replenishment/ModelHealth.tsx",
     "test:python": ".venv/bin/python -m unittest discover -s tests -p \"test_*.py\"",
     "test:browser": "playwright test",
-    "demo:data": "python3 ml/grocery.py"
+    "demo:data": "python3 ml/grocery.py",
+    "share:gateway": "node scripts/share-proxy.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.475.0",
