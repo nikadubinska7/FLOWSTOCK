@@ -31,7 +31,7 @@ The forecast comparison has passed: the selected MLP scored held-out WAPE 0.0249
 1. Import the private notebook `databricks_notebooks/17_deploy_v3_mlp_ranking_serving.py`.
 2. Run Cells 1–2 on Serverless GPU Small. Wait for 1,248,949 training, 274,144 holdout and 34,268 planning predictions.
 3. Switch to Serverless CPU and run Cell 3. Serverless Spark model logging must use a Unity Catalog Volume temporary directory, currently `/Volumes/workspace/default/flowstock_raw/models/flowstock_v3_pytorch_embedding_mlp_20261010/mlflow_tmp`.
-4. If Cell 3 reaches the 99.1% ranking result and fails only at `mlflow.spark.log_model`, run the documented logging-only recovery. Do not retrain: the planning scores, pipeline and deployment metrics already exist.
+4. If Cell 3 reaches the 99.1% ranking result and fails only at `mlflow.spark.log_model`, run the documented logging-only recovery. Do not retrain: the planning scores, pipeline and deployment metrics already exist. The 10 October recovery passed, logging the model and verifying 274,144 holdout rows, 34,268 planning rows, WAPE 0.0249 and bias -0.0024.
 5. Run Cell 4 only after the complete ranking MLflow run exists. Wait for `FLOWSTOCK V3 MLP + AI RANKING SNAPSHOT PUBLISHED`.
 6. Save the displayed ranking capture and serving result in `README.md`.
 7. Confirm these tables exist in `workspace.default`:
