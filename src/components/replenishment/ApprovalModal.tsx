@@ -34,7 +34,7 @@ export function ApprovalModal({
           <dt>Stores</dt><dd className="text-right text-lg font-semibold text-cockpit-text">{summary.stores}</dd>
           <dt>SKUs</dt><dd className="text-right text-lg font-semibold text-cockpit-text">{summary.skus}</dd>
           <dt>Total replenishment units</dt><dd className="text-right text-lg font-semibold text-cockpit-text">{whole(summary.units)}</dd>
-          <dt>Inventory value</dt><dd className="text-right text-lg font-semibold text-cockpit-text">{money(summary.inventoryValue)}</dd>
+          <dt>Inventory value at cost</dt><dd className="text-right text-lg font-semibold text-cockpit-text">{money(summary.inventoryValue)}</dd>
           <dt>Expected recovered revenue</dt><dd className="text-right text-lg font-semibold text-emerald-200">{money(summary.revenue)}</dd>
           <dt>Expected recovered margin</dt><dd className="text-right text-lg font-semibold text-emerald-200">{money(summary.margin)}</dd>
           <dt>Rows with manual override</dt><dd className="text-right text-lg font-semibold text-cockpit-text">{summary.manual}</dd>

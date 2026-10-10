@@ -716,7 +716,7 @@ export default function FlowstockApp() {
     return {
       kpi_definitions: {
         OOS: "Out of Stock risk: demand-weighted percentage of forecast units projected to be unfulfilled in the next 14 days.",
-        "Lost Sales Risk": "Revenue expected to be missed because demand cannot be served with available stock.",
+        "Lost Sales Risk": "Retail revenue expected to be missed because demand cannot be served with available stock; Inventory Value is measured separately at unit cost.",
         GMROI: "Gross Margin Return on Inventory Investment: projected gross margin divided by average inventory cost.",
         "Days Cover": "Estimated days of demand that current available stock can cover.",
         "DC Free Stock": "Distribution center stock available for new replenishment after reservations.",

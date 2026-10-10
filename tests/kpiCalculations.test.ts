@@ -27,4 +27,22 @@ describe("KPI calculations", () => {
     expect(current.oosPercent).toBe(54.5);
     expect(simulation.oosPercent).toBe(36.4);
   });
+
+  it("values inventory at unit cost and lost-sales risk at retail price", () => {
+    const rows = recalculateRows([
+      makeRow({
+        forecastNext14: 15,
+        stockOnHand: 10,
+        inTransitQty: 0,
+        unitCost: 4,
+        sellingPrice: 10,
+        finalQty: 0
+      })
+    ]);
+
+    const current = calculateKpis(rows, false);
+
+    expect(current.inventoryValue).toBe(40);
+    expect(current.lostSalesValue).toBe(50);
+  });
 });

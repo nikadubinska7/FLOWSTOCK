@@ -320,6 +320,8 @@ The first live connector test then passed against SQL warehouse `210b6909e8cdd1a
 
 The first synchronization subsequently completed and materialized the 34,268-row snapshot under `.flowstock/databricks-runs/2026-06-30/input`. The real application refresh endpoint loaded every row and calculated Current State inventory value €11,849,925, lost-sales risk €11,853,152, OOS risk 32.2%, days of cover 9.5 and DC free stock 351,618 units. The zero-valued screen captured before this operation was the deliberately cleared source-switch state while no synchronized snapshot existed; reloading the source catalog after synchronization exposes the populated snapshot.
 
+KPI audit — 10 October 2026: the application formulas are internally correct but the original V3 operational snapshot was misleading. Inventory Value summed 297,709 store and in-transit units at unit cost (€11,849,925), while Lost Sales Risk summed 141,360 forecast-shortfall units at retail selling price (€11,853,152); these are different monetary bases and need not match. The near equality came from Cell 4 seeding every store-SKU at the same 68% of its 14-day forecast, making all 34,268 rows short and fixing aggregate OOS risk near 32.2%. User-facing labels now state `Inventory Value (Cost)` and `Lost Sales Risk (Retail)`. The private publication notebook has also been corrected to create deterministic heterogeneous stock cover of 6–17 days plus 0–4 in-transit days. This changes only the operational starting position, not the trained MLP forecast, ranking model or their evaluation. Cell 4 must be rerun and the new snapshot resynchronized before the corrected business KPIs become the active result.
+
 The versioned APIs now include:
 
 - `POST /api/v1/data-sources/databricks-sportswear/test`

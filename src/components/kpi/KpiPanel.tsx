@@ -13,15 +13,15 @@ function explanations(isCurrent: boolean): Record<string, KpiExplanation> {
     : "Simulation uses stock on hand plus in-transit stock plus Final Qty.";
   return {
     inventory: {
-      name: isCurrent ? "Inventory Value" : "Projected Inventory",
-      meaning: "Total value of inventory in stores after the selected state.",
+      name: isCurrent ? "Inventory Value at Cost" : "Projected Inventory at Cost",
+      meaning: "Purchase-cost value of inventory in stores after the selected state.",
       formula: "sum(projected inventory units x unit cost)",
       basis: `${stockBasis} Flowstock uses cost value, not retail value, for this KPI.`,
       interpretation: "Higher inventory may protect availability, but it also ties up more stock value."
     },
     lostSales: {
-      name: "Lost Sales Risk",
-      meaning: "Estimated sales value that may be lost because forecast demand cannot be fulfilled.",
+      name: "Lost Sales Revenue Risk",
+      meaning: "Estimated retail revenue that may be lost because forecast demand cannot be fulfilled.",
       formula: "sum(unfulfilled forecast units x selling price)",
       basis: `${stockBasis} The forecast horizon is 14 days. Recovery accounts for delivery timing with uniform daily demand; existing in-transit stock is assumed available.`,
       interpretation: "Lower is better. This is the money-based companion to OOS Risk."
@@ -60,18 +60,18 @@ export function KpiPanel({ title, current, simulation }: { title: string; curren
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
-          label={isCurrent ? "Inventory Value" : "Projected Inventory"}
+          label={isCurrent ? "Inventory Value (Cost)" : "Projected Inventory (Cost)"}
           value={money(kpis.inventoryValue)}
-          detail={isCurrent ? "Current store stock value" : `Incremental replenishment: ${whole(kpis.replenishmentUnits)} units`}
+          detail={isCurrent ? "Store stock + transit at unit cost" : `Incremental replenishment: ${whole(kpis.replenishmentUnits)} units`}
           delta={!isCurrent ? money(kpis.inventoryValue - current.inventoryValue) : undefined}
           deltaValue={kpis.inventoryValue - current.inventoryValue}
           inverse
           explanation={kpiExplanations.inventory}
         />
         <KpiCard
-          label="Lost Sales Risk"
+          label="Lost Sales Risk (Retail)"
           value={money(kpis.lostSalesValue)}
-          detail={isCurrent ? "Projected next 14 days" : `${money(kpis.recoveredRevenue)} revenue recovered`}
+          detail={isCurrent ? "14-day unmet demand at selling price" : `${money(kpis.recoveredRevenue)} retail revenue recovered`}
           delta={!isCurrent ? money(kpis.lostSalesValue - current.lostSalesValue) : undefined}
           deltaValue={kpis.lostSalesValue - current.lostSalesValue}
           inverse
