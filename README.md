@@ -26,7 +26,9 @@ Render's assigned `PORT`. Attach the persistent disk at
 `.env.example`. Set Render's health check path to `/healthz`; that endpoint
 returns only service availability and does not expose application data.
 Set `NEXT_PUBLIC_FLOWSTOCK_V3_ONLY=1` for the hosted presentation build to show
-only Databricks Sportswear V3 and initialize the interface on that source.
+only Databricks Sportswear V3 and initialize the interface on that source. On a
+fresh persistent disk, the first refresh tests the Databricks connection,
+synchronizes the published V3 snapshot and then loads the workspace.
 
 ### Existing project
 

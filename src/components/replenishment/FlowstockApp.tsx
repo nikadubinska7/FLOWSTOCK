@@ -909,6 +909,40 @@ export default function FlowstockApp() {
     try {
       await fetch("/api/session", { method: "POST" });
       void refreshHealth();
+      let effectiveSnapshot = selectedSnapshot;
+      if (selectedSource === "databricks-sportswear" && !effectiveSnapshot) {
+        setMessage("Connecting to Databricks and synchronizing Sportswear V3…");
+        const testResponse = await fetch(
+          "/api/v1/data-sources/databricks-sportswear/test",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: "{}",
+          },
+        );
+        const testResult = await testResponse.json().catch(() => null);
+        if (!testResponse.ok) {
+          throw new Error(
+            testResult?.error?.message ?? "Databricks connection failed",
+          );
+        }
+        const syncResponse = await fetch(
+          "/api/v1/data-sources/databricks-sportswear/sync",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: "{}",
+          },
+        );
+        const syncResult = await syncResponse.json().catch(() => null);
+        if (!syncResponse.ok) {
+          throw new Error(
+            syncResult?.error?.message ?? "Databricks synchronization failed",
+          );
+        }
+        effectiveSnapshot = syncResult.snapshotId;
+        setSnapshot(effectiveSnapshot);
+      }
       const catalogResponse = await fetch("/api/v1/data-sources", {
         cache: "no-store",
       });
@@ -920,7 +954,7 @@ export default function FlowstockApp() {
       setPlanId("");
       const params = new URLSearchParams({
         source: selectedSource,
-        snapshot: selectedSnapshot,
+        snapshot: effectiveSnapshot,
       });
       const response = await fetch(`/api/refresh?${params}`, {
         cache: "no-store",
@@ -984,47 +1018,7 @@ export default function FlowstockApp() {
   }
 
   useEffect(() => {
-    if (!v3Only) {
-      void refresh();
-      return;
-    }
-
-    void (async () => {
-      setLoading(true);
-      setMessage("Loading Databricks Sportswear V3…");
-      try {
-        await fetch("/api/session", { method: "POST" });
-        const response = await fetch("/api/v1/data-sources", {
-          cache: "no-store",
-        });
-        if (!response.ok) throw new Error("Could not load the V3 data source");
-        const catalog = (await response.json()) as {
-          sources: DataSourceSummary[];
-        };
-        setDataSources(catalog.sources);
-        const definition = catalog.sources.find(
-          (item) => item.id === "databricks-sportswear",
-        );
-        const nextSnapshot = definition?.defaultSnapshot ?? "";
-        setSnapshot(nextSnapshot);
-        if (definition?.capabilities.canPlan && nextSnapshot) {
-          await refresh("databricks-sportswear", nextSnapshot);
-        } else {
-          setMessage(
-            definition?.statusMessage ??
-              "Test the Databricks connection, then synchronize V3.",
-          );
-        }
-      } catch (error) {
-        setMessage(
-          error instanceof Error
-            ? error.message
-            : "Could not initialize Databricks Sportswear V3.",
-        );
-      } finally {
-        setLoading(false);
-      }
-    })();
+    void refresh();
   }, []);
 
   function clearWorkspaceForSourceChange() {
