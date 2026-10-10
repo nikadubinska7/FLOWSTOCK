@@ -9,6 +9,10 @@ import {
   isDataSourceId,
   resolveDataSnapshot,
 } from "@/lib/server/dataSources";
+import { createReadStream } from "node:fs";
+import { stat } from "node:fs/promises";
+import path from "node:path";
+import { Readable } from "node:stream";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +30,28 @@ export async function GET(request: NextRequest) {
     const requestedSource = request.nextUrl.searchParams.get("source");
     const source = requestedSource ?? inferDataSource(snapshot);
     if (!isDataSourceId(source)) throw new Error("INVALID_DATA_SOURCE");
+    if (
+      process.env.NEXT_PUBLIC_FLOWSTOCK_V3_ONLY === "1" &&
+      source === "databricks-sportswear" &&
+      ["2026-06-30", "latest"].includes(snapshot)
+    ) {
+      const artifact = path.join(
+        process.cwd(),
+        "data",
+        "seed",
+        "flowstock_v3_refresh.json.gz",
+      );
+      const artifactStat = await stat(artifact);
+      const body = Readable.toWeb(createReadStream(artifact));
+      return new Response(body as unknown as BodyInit, {
+        headers: {
+          "Cache-Control": "private, no-store",
+          "Content-Encoding": "gzip",
+          "Content-Length": String(artifactStat.size),
+          "Content-Type": "application/json; charset=utf-8",
+        },
+      });
+    }
     const packagePath = await resolveDataSnapshot(source, snapshot);
     const loaded = await loadCsvPackage(packagePath);
     const currentKpis = calculateKpis(loaded.rows, false);

@@ -1397,6 +1397,34 @@ export default function FlowstockApp() {
     setLoading(true);
     setMessage("Preparing forecast and recommended plan…");
     try {
+      if (v3Only && source === "databricks-sportswear") {
+        const hostedResponse = await fetch("/api/hosted-v3-plan", {
+          cache: "no-store",
+        });
+        const hosted = (await hostedResponse.json()) as {
+          rows: WorkingRow[];
+          runDate: string;
+          currentKpis: Kpis;
+          simulationKpis: Kpis;
+          error?: { message?: string };
+        };
+        if (!hostedResponse.ok) {
+          throw new Error(hosted.error?.message ?? "Hosted plan failed");
+        }
+        setRows(hosted.rows);
+        setPlanId("hosted-v3-plan");
+        setRevision(0);
+        setRunDate(hosted.runDate);
+        setCurrentKpis(hosted.currentKpis);
+        setSimulationKpis(hosted.simulationKpis);
+        setActivePlan("Recommended plan");
+        setFrozenOrderIds(null);
+        setImpactSort("desc");
+        setMessage(
+          "Recommended V3 plan ready. Review exceptions before approval.",
+        );
+        return;
+      }
       const response = await fetch("/api/v1/runs", {
         method: "POST",
         headers: {
@@ -1522,6 +1550,38 @@ export default function FlowstockApp() {
     setMessage("Writing approval outputs and next-day CSV package...");
     try {
       if (!planId) throw new Error("Generate a plan before approval.");
+      if (v3Only && planId === "hosted-v3-plan") {
+        const approvedRows = pendingApproval.rows;
+        if (createShippingDocs) {
+          exportRowsToCsv(approvedRows, "Approved V3 replenishment");
+        }
+        const result: ApprovalResponse = {
+          approvalId: `DEMO-${new Date().toISOString().replaceAll(/[:.]/g, "-")}`,
+          approvedRows: approvedRows.length,
+          approvedUnits: approvedRows.reduce(
+            (sum, row) => sum + row.finalQty,
+            0,
+          ),
+          totalRetailValue: approvedRows.reduce(
+            (sum, row) => sum + row.finalQty * row.sellingPrice,
+            0,
+          ),
+          totalCostValue: approvedRows.reduce(
+            (sum, row) => sum + row.finalQty * row.unitCost,
+            0,
+          ),
+          blockedRowsExcluded: pendingApproval.blocked,
+          outputPath: "browser-download",
+          nextPackagePath: "unchanged-hosted-v3-snapshot",
+          shippingDocsCreated: createShippingDocs ? 1 : 0,
+        };
+        setLastApproval(result);
+        setPendingApproval(null);
+        setMessage(
+          `Hosted demonstration approved ${result.approvedRows} rows. The shared source snapshot remains unchanged.`,
+        );
+        return;
+      }
       const edits = rows
         .filter(
           (r) =>

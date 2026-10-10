@@ -66,7 +66,8 @@ await bootstrapDatabricksV3();
 process.env.FLOWSTOCK_SHARE_HOST = "0.0.0.0";
 process.env.FLOWSTOCK_SHARE_PORT = process.env.PORT || "10000";
 process.env.FLOWSTOCK_UPSTREAM_HOST = "127.0.0.1";
-process.env.FLOWSTOCK_UPSTREAM_PORT = "3000";
+process.env.FLOWSTOCK_UPSTREAM_PORT =
+  process.env.FLOWSTOCK_INTERNAL_PORT || "3000";
 
 const next = spawn(
   process.execPath,
@@ -76,7 +77,7 @@ const next = spawn(
     "--hostname",
     "127.0.0.1",
     "--port",
-    "3000",
+    process.env.FLOWSTOCK_UPSTREAM_PORT,
   ],
   { stdio: "inherit", env: process.env },
 );

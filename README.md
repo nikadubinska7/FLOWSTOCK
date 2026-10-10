@@ -36,6 +36,12 @@ as a compressed bootstrap artifact. It extracts that 20 MB package directly to
 the persistent disk before Next.js starts, avoiding the high-memory Databricks
 materialization path on the 512 MB demonstration instance. Databricks remains
 configured for connection testing and later controlled synchronization.
+The hosted V3 workspace and its selected AI recommendation are also served as
+compressed, prevalidated response artifacts. This keeps the full 34,268-row
+demonstration available while avoiding server-side expansion of a 65 MB JSON
+payload on each refresh. Approval in this constrained hosted presentation build
+is recorded in the browser and can export the approved rows; the synchronized
+source snapshot remains unchanged.
 
 ### Existing project
 

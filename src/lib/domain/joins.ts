@@ -53,7 +53,13 @@ export async function loadCsvPackage(packagePath: string): Promise<LoadedPackage
     "simulation_state"
   ];
 
-  const entries = await Promise.all(fileNames.map(async (name) => [name, await readCsv(path.join(packagePath, `${name}.csv`))] as const));
+  // Read sequentially. Parsing all source files concurrently temporarily keeps
+  // every CSV string, cell matrix and object representation alive at once,
+  // which can exceed the memory available on small hosted instances.
+  const entries: [string, CsvRecord[]][] = [];
+  for (const name of fileNames) {
+    entries.push([name, await readCsv(path.join(packagePath, `${name}.csv`))]);
+  }
   const raw = Object.fromEntries(entries);
   validatePackage(raw);
   const runDate = raw.simulation_state[0]?.run_date ?? raw.store_inventory[0]?.run_date ?? "2026-05-15";
@@ -201,6 +207,6 @@ export async function loadCsvPackage(packagePath: string): Promise<LoadedPackage
       costValue: n(row.total_cost_value),
       packagePath
     })),
-    raw
+    raw,
   };
 }
