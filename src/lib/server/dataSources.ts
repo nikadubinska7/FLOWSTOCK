@@ -273,6 +273,9 @@ export function getDataSourceProvider(sourceId: string): DataSourceProvider {
 }
 
 export async function listDataSources(): Promise<DataSourceSummary[]> {
+  if (process.env.NEXT_PUBLIC_FLOWSTOCK_V3_ONLY === "1") {
+    return [await providers["databricks-sportswear"].summary()];
+  }
   return Promise.all(
     (
       [
